@@ -1,4 +1,5 @@
 import os
+import sys
 import dj_database_url
 from pathlib import Path
 from django.urls import reverse_lazy
@@ -63,12 +64,39 @@ TEMPLATES = [
 WSGI_APPLICATION = 'entropy.wsgi.application'
 
 # 5. База данных
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-        conn_max_age=600
-    )
-}
+_DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
+_SQLITE_FALLBACK = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+
+# Guard against unresolved Railway reference variables (empty string or
+# a literal placeholder like "${{ postgres.DATABASE_URL }}") which cause
+# dj_database_url to return a dict without an ENGINE key, crashing Django.
+if _DATABASE_URL and not _DATABASE_URL.startswith('${{'):
+    _db_config = dj_database_url.config(default=_DATABASE_URL, conn_max_age=600)
+    if not _db_config.get('ENGINE'):
+        # URL was present but dj_database_url could not parse it — log a
+        # clear message and fall back to SQLite so the process can start.
+        print(
+            f"WARNING: DATABASE_URL could not be parsed (value: {_DATABASE_URL!r}). "
+            "Falling back to SQLite. Check that the Railway reference variable has resolved.",
+            file=sys.stderr,
+        )
+        _db_config = dj_database_url.config(default=_SQLITE_FALLBACK, conn_max_age=600)
+else:
+    if _DATABASE_URL.startswith('${{'):
+        print(
+            f"WARNING: DATABASE_URL appears to be an unresolved Railway reference variable "
+            f"({_DATABASE_URL!r}). Falling back to SQLite until the variable resolves.",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            "WARNING: DATABASE_URL is not set. Falling back to SQLite. "
+            "Set DATABASE_URL in your environment for a production database.",
+            file=sys.stderr,
+        )
+    _db_config = dj_database_url.config(default=_SQLITE_FALLBACK, conn_max_age=600)
+
+DATABASES = {'default': _db_config}
 
 # 6. Валидация паролей
 AUTH_PASSWORD_VALIDATORS = [
