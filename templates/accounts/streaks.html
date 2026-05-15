@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Система стриков{% endblock %}
+
+{% block content %}
+  <div class="mb-8 border-b border-white pb-6">
+    <h1 class="text-3xl font-bold">Система стриков</h1>
+    <p class="mt-2 text-sm text-white/60">Заходите каждый день подряд, чтобы получать награды.</p>
+  </div>
+
+  <section class="entropy-card mb-8 p-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-4xl" aria-hidden="true">&#128293;</span>
+        <div>
+          <p class="text-xs uppercase tracking-widest text-white/50">Текущий стрик</p>
+          <p class="text-3xl font-bold tabular-nums">{{ current_streak }} <span class="text-lg font-normal text-white/60">/ 7 дн.</span></p>
+        </div>
+      </div>
+      {% if has_free_post %}
+        <p class="border border-white px-4 py-2 text-sm">Бесплатный пост доступен</p>
+      {% endif %}
+    </div>
+    <div class="mt-6">
+      <div class="mb-2 flex justify-between text-xs text-white/50">
+        <span>Прогресс цикла</span>
+        <span>{{ progress_pct }}%</span>
+      </div>
+      <div class="h-2 w-full border border-white">
+        <div class="h-full bg-white transition-all" style="width: {{ progress_pct }}%"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="entropy-card p-6">
+    <h2 class="text-lg font-semibold">Награды по дням</h2>
+    <ul class="mt-6 space-y-0 divide-y divide-white border-t border-white">
+      {% for item in schedule %}
+        <li class="flex flex-wrap items-center justify-between gap-4 py-4 {% if item.day == current_streak %}bg-white/5{% endif %}">
+          <div>
+            <p class="font-medium">{{ item.label }}</p>
+            <p class="mt-1 text-sm text-white/60">{{ item.description }}</p>
+          </div>
+          <div class="text-right text-sm font-medium">
+            {% if item.free_post %}
+              Бесплатный пост
+            {% elif item.tokens %}
+              +{{ item.tokens }} токенов
+            {% else %}
+              —
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-6 text-xs text-white/40">После 7-го дня цикл начинается заново. Пропуск дня сбрасывает стрик на 1.</p>
+  </section>
+{% endblock %}

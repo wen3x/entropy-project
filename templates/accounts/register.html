@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+  <div class="entropy-card mx-auto max-w-md p-8">
+    <h1 class="text-2xl font-bold">Регистрация</h1>
+    <p class="mt-1 text-sm text-white/50">После регистрации на счёт начисляется <span class="text-white">50 токенов</span>.</p>
+    <form method="post" class="mt-6 space-y-4">
+      {% csrf_token %}
+      {% for field in form %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="block text-sm text-white/70">{{ field.label }}</label>
+          <div class="mt-1">{{ field }}</div>
+          {% if field.errors %}<p class="mt-1 text-sm">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="entropy-btn-primary w-full py-2.5 text-sm font-medium">Создать аккаунт</button>
+    </form>
+    <p class="mt-6 text-center text-sm text-white/50">Уже есть аккаунт? <a href="{% url 'login' %}" class="underline text-white">Вход</a></p>
+  </div>
+{% endblock %}

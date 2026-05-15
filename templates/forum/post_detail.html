@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+  <article class="entropy-card p-8 {% if post.is_golden %}post-golden{% endif %}">
+    <p class="text-xs text-white/50">
+      <a href="{% url 'profile_detail' post.author.pk %}" class="hover:underline">{{ post.author.username }}</a>
+      {% if post.is_golden %}<span class="ml-2 border border-white px-1.5 py-0.5 text-[10px] uppercase">Золотой пост · 24ч</span>{% endif %}
+      &middot; {{ post.created_at|date:"d.m.Y H:i" }}
+    </p>
+    <h1 class="mt-2 text-3xl font-bold">{{ post.title }}</h1>
+
+    <div class="mt-4 flex flex-wrap items-center gap-3 text-sm">
+      {% if post.expires_at > now %}
+        <div class="countdown-pill border border-white px-3 py-1 text-xs uppercase tracking-wide" data-role="expire-pill">
+          <span class="text-white/60">Пост: </span>
+          <span class="countdown tabular-nums" data-expires="{{ post.expires_at.isoformat }}">…</span>
+        </div>
+      {% else %}
+        <span class="border border-white/40 px-3 py-1 text-xs text-white/50">Срок истёк</span>
+      {% endif %}
+      <span class="text-white/60">Лайков: {{ post.like_count }}</span>
+      {% if user.is_authenticated %}
+        <form action="{% url 'forum:toggle_like_post' post.slug %}" method="post" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="entropy-btn px-3 py-1 text-xs">{% if liked_post %}− лайк{% else %}+ лайк{% endif %}</button>
+        </form>
+      {% endif %}
+      {% if can_delete %}
+        <form action="{% url 'forum:post_delete' post.slug %}" method="post" class="inline" onsubmit="return confirm('Отправить пост в Кладбище?');">
+          {% csrf_token %}
+          <button type="submit" class="border border-white bg-white px-3 py-1 text-xs text-black hover:bg-black hover:text-white">Удалить</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <div class="mt-6 whitespace-pre-wrap text-white/90">{{ post.content }}</div>
+    {% if post.is_golden %}
+      <p class="mt-4 text-xs text-white/50">Золотой пост: время не продлевается. Лайк = +10 токенов (один раз).</p>
+    {% endif %}
+  </article>
+
+  <section class="mt-10">
+    <h2 class="text-lg font-semibold border-b border-white pb-2">Комментарии</h2>
+
+    {% if user.is_authenticated and post.expires_at > now and comment_form %}
+      <form method="post" class="mt-4 entropy-card p-4">
+        {% csrf_token %}
+        {{ comment_form.text }}
+        <button type="submit" class="entropy-btn-primary mt-3 px-4 py-2 text-sm font-medium">Оставить мнение</button>
+      </form>
+    {% elif user.is_authenticated and post.expires_at > now and has_top_level_comment %}
+      <p class="mt-4 text-sm text-white/50">Вы уже оставили мнение. Отвечайте на комментарии ниже.</p>
+    {% elif not user.is_authenticated %}
+      <p class="mt-4 text-sm text-white/60"><a href="{% url 'login' %}" class="underline">Войдите</a>, чтобы комментировать.</p>
+    {% elif post.expires_at <= now %}
+      <p class="mt-4 text-sm text-white/50">Время поста истекло.</p>
+    {% endif %}
+
+    <ul class="mt-6 space-y-4">
+      {% for comment in top_comments %}
+        <li class="entropy-card p-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium">
+                <a href="{% url 'profile_detail' comment.author.pk %}" class="hover:underline">{{ comment.author.username }}</a>
+                {% if comment.is_approved %}<span class="ml-2 border border-white bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-black">Одобрено</span>{% endif %}
+              </p>
+              <p class="mt-2 whitespace-pre-wrap text-sm text-white/80">{{ comment.text }}</p>
+              {% if user.is_authenticated and post.expires_at > now %}
+              <form method="post" class="mt-3 flex gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="reply_to" value="{{ comment.pk }}">
+                <input type="text" name="text" maxlength="2000" placeholder="Ответ…" class="entropy-input flex-1 text-xs" required>
+                <button type="submit" class="entropy-btn px-2 py-1 text-xs">Ответ</button>
+              </form>
+              {% endif %}
+              {% if comment.replies.all %}
+              <ul class="mt-4 ml-4 space-y-3 border-l border-white/30 pl-4">
+                {% for reply in comment.replies.all %}
+                <li>
+                  <p class="text-xs text-white/50"><a href="{% url 'profile_detail' reply.author.pk %}" class="hover:underline">{{ reply.author.username }}</a></p>
+                  <p class="mt-1 text-sm text-white/70">{{ reply.text }}</p>
+                </li>
+                {% endfor %}
+              </ul>
+              {% endif %}
+            </div>
+            <div class="text-right text-xs text-white/50">
+              <div class="countdown-pill border border-white px-2 py-0.5" data-role="expire-pill">
+                <span class="countdown tabular-nums" data-expires="{{ comment.expires_at.isoformat }}">…</span>
+              </div>
+              <div class="mt-1">&#9829; {{ comment.like_count }}</div>
+              {% if user.is_authenticated %}
+                <form action="{% url 'forum:toggle_like_comment' comment.pk %}" method="post" class="mt-1 inline">
+                  {% csrf_token %}
+                  <button type="submit" class="entropy-btn px-2 py-0.5 text-[10px]">{% if comment.pk in liked_comment_ids %}−{% else %}+{% endif %}</button>
+                </form>
+              {% endif %}
+              {% if is_god and post.is_golden and not comment.is_approved %}
+                <form action="{% url 'forum:approve_comment' comment.pk %}" method="post" class="mt-2">
+                  {% csrf_token %}
+                  <button type="submit" class="entropy-btn-primary px-2 py-1 text-[10px]">Одобрить</button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </li>
+      {% empty %}
+        <li class="text-sm text-white/50">Комментариев пока нет.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <p class="mt-8"><a href="{% url 'forum:post_list' %}" class="text-sm hover:underline">&larr; К ленте</a></p>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  function formatRemaining(ms) {
+    if (ms <= 0) return "истекло";
+    var s = Math.floor(ms/1000), d = Math.floor(s/86400), h = Math.floor((s%86400)/3600);
+    var m = Math.floor((s%3600)/60), sec = s%60, p = [];
+    if (d) p.push(d+"д"); if (h||d) p.push(h+"ч"); p.push(m+"м "+sec+"с"); return p.join(" ");
+  }
+  function tick() {
+    var now = Date.now();
+    document.querySelectorAll(".countdown").forEach(function (el) {
+      el.textContent = formatRemaining(new Date(el.getAttribute("data-expires")).getTime() - now);
+    });
+  }
+  tick(); setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}

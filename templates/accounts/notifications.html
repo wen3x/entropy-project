@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Уведомления{% endblock %}
+
+{% block content %}
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white pb-4">
+    <h1 class="text-2xl font-bold">Уведомления</h1>
+    <form action="{% url 'notifications_mark_read' %}" method="post">
+      {% csrf_token %}
+      <button type="submit" class="entropy-btn px-3 py-1.5 text-xs">Прочитать все</button>
+    </form>
+  </div>
+
+  <ul class="divide-y divide-white border border-white">
+    {% for note in notifications %}
+      <li class="px-4 py-4 {% if not note.is_read %}bg-white/5{% endif %}">
+        <p class="text-sm {% if not note.is_read %}font-medium{% endif %}">{{ note.message }}</p>
+        <p class="mt-1 text-xs text-white/40">{{ note.created_at|date:"d.m.Y H:i" }}</p>
+        {% if note.link %}
+          <a href="{{ note.link }}" class="mt-2 inline-block text-xs underline">Перейти</a>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="px-4 py-8 text-center text-sm text-white/50">Уведомлений нет.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

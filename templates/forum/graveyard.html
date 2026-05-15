@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load graveyard_tags %}
+
+{% block title %}Кладбище{% endblock %}
+
+{% block content %}
+  <div class="mb-8 border-b border-white pb-6">
+    <h1 class="text-3xl font-bold tracking-tight">Кладбище</h1>
+    <p class="mt-2 text-sm text-white/60">Названия распадаются. Содержимое недоступно.</p>
+  </div>
+
+  {% if not posts %}
+    <p class="border border-white/40 px-6 py-12 text-center text-white/50">Здесь пока пусто.</p>
+  {% endif %}
+
+  <ul class="divide-y divide-white border border-white">
+    {% for post in posts %}
+      <li class="flex flex-wrap items-center justify-between gap-4 px-4 py-4 font-mono text-sm">
+        <p class="text-white/80">{{ post.title|corrupt_title }}</p>
+        {% if is_god %}
+        <div class="flex flex-wrap gap-2">
+          <form action="{% url 'forum:post_resurrect' post.slug %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="entropy-btn px-3 py-1 text-xs">Воскресить</button>
+          </form>
+          <form action="{% url 'forum:post_destroy' post.slug %}" method="post" onsubmit="return confirm('Уничтожить безвозвратно?');">
+            {% csrf_token %}
+            <button type="submit" class="border border-white bg-white px-3 py-1 text-xs text-black">Уничтожить</button>
+          </form>
+        </div>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

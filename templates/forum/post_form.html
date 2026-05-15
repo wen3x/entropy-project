@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Новый пост{% endblock %}
+
+{% block content %}
+  <div class="entropy-card mx-auto max-w-2xl p-8">
+    <h1 class="text-2xl font-bold">Новый пост</h1>
+    <p class="mt-2 text-sm text-white/60">
+      {% if has_free_post %}
+        Следующий пост <span class="text-white">бесплатный</span> (стрик, день 7).
+      {% else %}
+        Стоимость: <span class="text-white">{{ post_cost }} токенов</span>.
+      {% endif %}
+      Публикация продлевает срок жизни аккаунта на 7 дней.
+    </p>
+
+    <form method="post" class="mt-8 space-y-6">
+      {% csrf_token %}
+      {% for field in form %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-white/80">{{ field.label }}</label>
+          <div class="mt-1">{{ field }}</div>
+          {% if field.errors %}<p class="mt-1 text-sm text-white/70">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+      {% endfor %}
+      <div class="flex gap-3">
+        <button type="submit" class="entropy-btn-primary px-5 py-2.5 text-sm font-medium">Опубликовать</button>
+        <a href="{% url 'forum:post_list' %}" class="entropy-btn px-5 py-2.5 text-sm font-medium">Отмена</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Лента{% endblock %}
+
+{% block content %}
+  <div class="mb-8 border-b border-white pb-6">
+    <h1 class="text-3xl font-bold tracking-tight">Активные посты</h1>
+    <p class="mt-2 text-sm text-white/60">Только живые темы с неистёкшим сроком.</p>
+  </div>
+
+  {% if not posts %}
+    <p class="border border-white/40 px-6 py-12 text-center text-white/50">
+      Нет активных постов.{% if user.is_authenticated %} Создайте новый — в меню «Новый пост».{% endif %}
+    </p>
+  {% endif %}
+
+  <div class="space-y-4">
+    {% for post in posts %}
+      <article class="entropy-card post-card p-6 {% if post.is_golden %}post-golden{% endif %}" data-expires="{{ post.expires_at.isoformat }}">
+        <div class="flex flex-wrap items-start justify-between gap-4 post-card-inner">
+          <div class="min-w-0 flex-1">
+            <p class="text-xs text-white/50">
+              <a href="{% url 'profile_detail' post.author.pk %}" class="hover:underline">{{ post.author.username }}</a>
+              {% if post.is_golden %}<span class="ml-2 border border-white px-1.5 py-0.5 text-[10px] uppercase tracking-widest">Золотой</span>{% endif %}
+              &middot; {{ post.created_at|date:"d.m.Y H:i" }}
+            </p>
+            <h2 class="mt-2 text-xl font-semibold post-card-title">
+              <a href="{{ post.get_absolute_url }}" class="hover:underline">{{ post.title }}</a>
+            </h2>
+            <p class="mt-3 line-clamp-3 text-sm text-white/70 post-card-content">{{ post.content }}</p>
+          </div>
+          <div class="flex shrink-0 flex-col items-end gap-2 text-right text-sm">
+            <div class="countdown-pill border border-white px-3 py-1 text-xs font-medium uppercase tracking-wide" data-role="expire-pill">
+              <span class="text-white/60">Осталось: </span>
+              <span class="countdown tabular-nums" data-expires="{{ post.expires_at.isoformat }}">…</span>
+            </div>
+            <div class="flex items-center gap-2 text-white/60">
+              <span>&#9829; {{ post.like_count }}</span>
+              {% if user.is_authenticated %}
+                <form action="{% url 'forum:toggle_like_post' post.slug %}" method="post" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="entropy-btn px-2 py-0.5 text-xs">
+                    {% if post.slug in liked_slugs %}− лайк{% else %}+ лайк{% endif %}
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var H3 = 3 * 3600000, H1 = 3600000;
+  function formatRemaining(ms) {
+    if (ms <= 0) return "истекло";
+    var s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
+    var m = Math.floor((s % 3600) / 60), sec = s % 60, parts = [];
+    if (d) parts.push(d + "д");
+    if (h || d) parts.push(h + "ч");
+    parts.push(m + "м " + sec + "с");
+    return parts.join(" ");
+  }
+  function applyDeathEffect(card, rem) {
+    var inner = card.querySelector(".post-card-inner");
+    var title = card.querySelector(".post-card-title");
+    var content = card.querySelector(".post-card-content");
+    [inner, title, content].forEach(function (el) {
+      if (!el) return;
+      el.classList.remove("post-dying-shake", "post-dying-blur");
+    });
+    card.classList.remove("post-dying-blur");
+    if (rem <= 0 || rem > H3) return;
+    if (rem < H1) {
+      card.classList.add("post-dying-blur");
+      if (title) title.classList.add("post-dying-shake", "post-dying-blur");
+      if (content) content.classList.add("post-dying-shake", "post-dying-blur");
+    } else {
+      if (title) title.classList.add("post-dying-shake");
+      if (content) content.classList.add("post-dying-shake");
+    }
+  }
+  function tick() {
+    var now = Date.now();
+    document.querySelectorAll(".countdown").forEach(function (el) {
+      var end = new Date(el.getAttribute("data-expires")).getTime();
+      var rem = end - now;
+      el.textContent = formatRemaining(rem);
+    });
+    document.querySelectorAll(".post-card").forEach(function (card) {
+      var end = new Date(card.getAttribute("data-expires")).getTime();
+      applyDeathEffect(card, end - now);
+    });
+  }
+  tick(); setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}
