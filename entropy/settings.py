@@ -1,4 +1,5 @@
 import os
+import dj_database_url
 from pathlib import Path
 from django.urls import reverse_lazy
 from dotenv import load_dotenv
@@ -63,10 +64,10 @@ WSGI_APPLICATION = 'entropy.wsgi.application'
 
 # 5. База данных
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+        conn_max_age=600
+    )
 }
 
 # 6. Валидация паролей
@@ -98,3 +99,4 @@ AUTH_USER_MODEL = 'accounts.User'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = reverse_lazy('forum:post_list')
 LOGOUT_REDIRECT_URL = reverse_lazy('forum:post_list')
+CSRF_TRUSTED_ORIGINS = ['https://entropy-project-production.up.railway.app']
