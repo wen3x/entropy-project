@@ -13,7 +13,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
 
 # На сервере тут будет твой домен, пока оставляем локальные
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = ['entropy-project-production.up.railway.app', 'localhost', '127.0.0.1']
 
 # 3. Приложения
 INSTALLED_APPS = [
