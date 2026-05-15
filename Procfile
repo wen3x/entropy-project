@@ -1,1 +1,1 @@
-web: gunicorn entropy.wsgi
+web: python manage.py migrate && gunicorn entropy.wsgi
