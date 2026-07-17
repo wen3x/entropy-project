@@ -1,28 +1,97 @@
+import base64
+import json
+import logging
 from datetime import timedelta
+from functools import lru_cache
 
+from django.conf import settings
 from django.utils import timezone
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.backends import default_backend
+from py_vapid import Vapid
+from pywebpush import WebPushException, webpush
 
-from .models import Notification, User
+from .models import Notification, PushSubscription, User
+
+logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _get_vapid() -> Vapid:
+    """Создать Vapid instance из raw base64-ключа (32 байта) в настройках."""
+    key_b64 = settings.WEBPUSH_VAPID_PRIVATE_KEY
+    # Восстанавливаем padding
+    padding = 4 - len(key_b64) % 4
+    if padding != 4:
+        key_b64 += "=" * padding
+    priv_bytes = base64.urlsafe_b64decode(key_b64)
+    private_value = int.from_bytes(priv_bytes, "big")
+    private_key = ec.derive_private_key(
+        private_value, ec.SECP256R1(), default_backend()
+    )
+    return Vapid(private_key=private_key)
+
+
+def _send_web_push(user: User, title: str, body: str, icon: str = "", url: str = ""):
+    """Отправить push-уведомление на все подписки пользователя."""
+    subs = PushSubscription.objects.filter(user=user)
+    if not subs.exists():
+        return
+
+    payload = json.dumps({
+        "title": title,
+        "body": body,
+        "icon": icon or "/static/img/favicon.png",
+        "badge": "/static/img/favicon.png",
+        "data": {"url": url},
+    })
+
+    try:
+        vapid = _get_vapid()
+    except Exception as e:
+        logger.warning(f"Не удалось загрузить VAPID ключ: {e}")
+        return
+
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {
+                        "p256dh": sub.p256dh,
+                        "auth": sub.auth,
+                    },
+                },
+                data=payload,
+                vapid_private_key=vapid,
+                vapid_claims=settings.WEBPUSH_VAPID_CLAIMS,
+            )
+        except WebPushException as e:
+            # Если подписка истекла/невалидна — удаляем её
+            if e.response and e.response.status_code in (401, 404, 410):
+                sub.delete()
+                logger.info(f"Удалена просроченная push-подписка {sub.pk} для {user.username}")
+            else:
+                logger.warning(f"Push-ошибка для {user.username}: {e}")
+        except Exception as e:
+            logger.warning(f"Push-ошибка для {user.username}: {e}")
 
 
 def notify(user: User, kind: str, message: str, link: str = "") -> Notification:
-    return Notification.objects.create(
+    note = Notification.objects.create(
         user=user,
         kind=kind,
         message=message,
         link=link,
     )
-
-
-def notify_post_liked(post_author: User, liker_username: str, post_title: str, post_url: str):
-    if post_author.username == liker_username:
-        return
-    notify(
-        post_author,
-        Notification.Kind.POST_LIKED,
-        f"«{post_title}» понравился пользователю {liker_username}.",
-        link=post_url,
+    # Отправляем push-уведомление
+    _send_web_push(
+        user=user,
+        title="Entropy",
+        body=message,
+        url=link,
     )
+    return note
 
 
 def notify_quest_complete(user: User, quest_title: str, reward: int = 0, *, free_post: bool = False):

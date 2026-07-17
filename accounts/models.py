@@ -163,11 +163,62 @@ class ShopItem(models.Model):
         return self.title
 
 
+class NodeSubscription(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="node_subscriptions",
+    )
+    node = models.ForeignKey(
+        "forum.Node",
+        on_delete=models.CASCADE,
+        related_name="subscribers",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_notified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "node"),
+                name="uniq_user_node_subscription",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} → {self.node.name}"
+
+
+class PushSubscription(models.Model):
+    """Подписка браузера на Push-уведомления (Web Push Protocol)."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+    )
+    endpoint = models.URLField(max_length=500)
+    p256dh = models.CharField(max_length=256)
+    auth = models.CharField(max_length=256)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "endpoint"),
+                name="uniq_user_push_endpoint",
+            )
+        ]
+
+    def __str__(self):
+        return f"Push sub: {self.user.username}"
+
+
 class Notification(models.Model):
     class Kind(models.TextChoices):
         POST_LIKED = "post_liked", "Лайк поста"
         POST_DYING = "post_dying", "Пост умирает"
         QUEST_COMPLETE = "quest_complete", "Квест выполнен"
+        NODE_RANDOM_POST = "node_random_post", "Рандомный пост из узла"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

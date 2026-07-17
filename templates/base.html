@@ -22,6 +22,12 @@
 
   {% load static %}
   <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+  <link rel="manifest" href="{% url 'manifest_json' %}">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Entropy">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="apple-touch-icon" href="{% static 'img/favicon.png' %}">
   <script>
   (function () {
     var k = "entropy-site-theme", s = localStorage.getItem(k);
@@ -145,6 +151,14 @@
   </footer>
 
   <script src="{% static 'js/entropy-theme.js' %}"></script>
+
+  {# ── PWA: Service Worker ── #}
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('{% static "js/sw.js" %}', { scope: '/' })
+      .catch(function() { /* Service worker registration failed */ });
+  }
+  </script>
   <script>
   (function () {
     var toggle  = document.getElementById('menu-toggle');
@@ -169,9 +183,189 @@
     overlay.addEventListener('click', closeMenu);
   })();
   </script>
+  {# ── PWA: Install banner (Android only) ── #}
+  <div id="pwa-install-banner" class="pwa-install-banner" role="dialog" aria-label="Установка приложения">
+    <div class="pwa-install-banner__inner">
+      <p class="pwa-install-banner__text">
+        <strong>Нравится форум?</strong> Попробуйте приложение.
+      </p>
+      <div class="pwa-install-banner__actions">
+        <button type="button" id="pwa-install-btn" class="entropy-btn-primary px-4 py-2 text-sm font-semibold">Установить</button>
+        <button type="button" id="pwa-install-dismiss" class="entropy-btn px-3 py-2 text-sm font-semibold">Не сейчас</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var banner = document.getElementById('pwa-install-banner');
+    if (!banner) return;
+
+    // Проверяем, не закрыли ли уже
+    if (localStorage.getItem('pwa-banner-dismissed')) {
+      banner.remove();
+      return;
+    }
+
+    // Показываем только на Android
+    var ua = navigator.userAgent.toLowerCase();
+    var isAndroid = /android/.test(ua);
+    if (!isAndroid || matchMedia('(display-mode: standalone)').matches) {
+      banner.remove();
+      return;
+    }
+
+    // Показываем баннер
+    setTimeout(function () { banner.classList.add('pwa-install-banner--visible'); }, 1000);
+
+    // Кнопка закрытия
+    var dismiss = document.getElementById('pwa-install-dismiss');
+    if (dismiss) {
+      dismiss.addEventListener('click', function () {
+        localStorage.setItem('pwa-banner-dismissed', '1');
+        banner.classList.remove('pwa-install-banner--visible');
+        setTimeout(function () { banner.remove(); }, 300);
+      });
+    }
+
+    // Кнопка установки (beforeinstallprompt)
+    var installBtn = document.getElementById('pwa-install-btn');
+    var deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (installBtn) {
+        installBtn.style.display = '';
+      }
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener('click', function () {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function (choiceResult) {
+            if (choiceResult.outcome === 'accepted') {
+              banner.classList.remove('pwa-install-banner--visible');
+              setTimeout(function () { banner.remove(); }, 300);
+            }
+            deferredPrompt = null;
+          });
+        } else {
+          // Если beforeinstallprompt не сработал — скрываем кнопку
+          installBtn.style.display = 'none';
+        }
+      });
+    }
+  })();
+  </script>
+
   {% if user.is_authenticated %}
   <script src="{% static 'js/entropy-likes.js' %}"></script>
   {% endif %}
+
+  {# ── PWA: Push-уведомления (подписка) ── #}
+  <script>
+  (function () {
+    // Только для авторизованных пользователей
+    {% if user.is_authenticated %}
+    var pushStatus = localStorage.getItem('entropy-push-enabled');
+
+    // Подписываемся на push, когда пользователь уже дал разрешение
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.ready.then(function (reg) {
+        reg.pushManager.getSubscription().then(function (sub) {
+          // Если уже подписаны и разрешение есть — ок
+          if (sub) {
+            localStorage.setItem('entropy-push-enabled', 'granted');
+            return;
+          }
+
+          // Если статус уже определён (denied) — не спамим
+          if (pushStatus === 'denied') return;
+
+          // Если ранее разрешили — подписываемся
+          if (Notification.permission === 'granted') {
+            localStorage.setItem('entropy-push-enabled', 'granted');
+            subscribeToPush(reg);
+          } else if (Notification.permission === 'denied') {
+            localStorage.setItem('entropy-push-enabled', 'denied');
+          }
+        });
+      });
+    }
+
+    function subscribeToPush(reg) {
+      // Получаем VAPID public key
+      fetch('{% url "vapid_public_key" %}').then(function (r) { return r.json(); }).then(function (data) {
+        if (!data.public_key) return;
+
+        var vapidKey = urlBase64ToUint8Array(data.public_key);
+
+        reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidKey,
+        }).then(function (subscription) {
+          // Отправляем подписку на сервер
+          fetch('{% url "save_push_subscription" %}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
+            },
+            body: JSON.stringify(subscription.toJSON()),
+          }).then(function (r) { return r.json(); }).then(function (res) {
+            if (res.ok) {
+              localStorage.setItem('entropy-push-enabled', 'granted');
+            }
+          }).catch(function () {});
+        }).catch(function (err) {
+          if (err.code === 20) { // AbortError / permission denied
+            localStorage.setItem('entropy-push-enabled', 'denied');
+          }
+        });
+      }).catch(function () {});
+    }
+
+    // Просим разрешение на уведомления при клике на кнопку
+    document.addEventListener('click', function (e) {
+      var notifBtn = e.target.closest('a[href*="notifications"]');
+      if (!notifBtn) return;
+
+      if ('Notification' in window && Notification.permission === 'default') {
+        e.preventDefault();
+        Notification.requestPermission().then(function (perm) {
+          if (perm === 'granted') {
+            localStorage.setItem('entropy-push-enabled', 'granted');
+            navigator.serviceWorker.ready.then(function (reg) {
+              reg.pushManager.getSubscription().then(function (sub) {
+                if (!sub) subscribeToPush(reg);
+              });
+            });
+          } else {
+            localStorage.setItem('entropy-push-enabled', 'denied');
+          }
+          // Переходим на страницу уведомлений
+          window.location.href = notifBtn.getAttribute('href');
+        });
+      }
+    });
+
+    // Helper: base64 to Uint8Array
+    function urlBase64ToUint8Array(base64String) {
+      var padding = '='.repeat((4 - base64String.length % 4) % 4);
+      var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      var rawData = window.atob(base64);
+      var output = new Uint8Array(rawData.length);
+      for (var i = 0; i < rawData.length; ++i) {
+        output[i] = rawData.charCodeAt(i);
+      }
+      return output;
+    }
+    {% endif %}
+  })();
+  </script>
+
   {% block extra_js %}{% endblock %}
 </body>
 </html>

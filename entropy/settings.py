@@ -114,3 +114,20 @@ DONATION_ALERTS_URL = os.getenv(
     'DONATION_ALERTS_URL',
     'https://www.donationalerts.com/',
 )
+
+# ── PWA: Web Push (VAPID) ────────────────────────────────────────────────────
+WEBPUSH_VAPID_PUBLIC_KEY = os.getenv(
+    'WEBPUSH_VAPID_PUBLIC_KEY',
+    'BMlKAiXwMgpNQRjRXwVtxTwH1i-x-HxErkmehRfa-gPhyTIOUg66vYWTp0jIJeFTHC-FwykXG-OHqvF0mGTtZXQ',
+)
+# Raw 32-byte EC private key, base64url encoded (NO newlines — удобно для .env)
+WEBPUSH_VAPID_PRIVATE_KEY = os.getenv(
+    'WEBPUSH_VAPID_PRIVATE_KEY',
+    'dpoqaF4adf46qfOQ0q4800byefS8a6U77FWkIL1fjpE',
+)
+WEBPUSH_VAPID_CLAIMS = {
+    'sub': 'mailto:entropy@example.com',
+}
+
+# ── Cron: секретный токен для внешнего триггера (cron-job.org) ────────────
+CRON_SECRET_TOKEN = os.getenv('CRON_SECRET_TOKEN', 'change-me-in-production')

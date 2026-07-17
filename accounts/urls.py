@@ -26,4 +26,10 @@ urlpatterns = [
         auth_views.LogoutView.as_view(),
         name="logout",
     ),
+    # PWA: Push-уведомления
+    path("push/subscribe/", views.save_push_subscription, name="save_push_subscription"),
+    path("push/unsubscribe/", views.delete_push_subscription, name="delete_push_subscription"),
+    path("push/vapid-key/", views.vapid_public_key, name="vapid_public_key"),
+    # Бесплатный крон (cron-job.org → этот URL)
+    path("cron/send-notifications/", views.cron_trigger, name="cron_trigger"),
 ]

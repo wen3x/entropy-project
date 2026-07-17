@@ -11,9 +11,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from accounts.models import NodeSubscription
 from accounts.notifications import (
     check_dying_posts_for_user,
-    notify_post_liked,
 )
 from accounts.quests import (
     check_comment_like_quests,
@@ -435,12 +435,6 @@ def toggle_like_post(request, slug):
             update_fields.append("granted_time_extension")
         like.save(update_fields=update_fields)
         check_post_like_quests(post)
-        notify_post_liked(
-            post.author,
-            request.user.username,
-            post.title,
-            post.get_absolute_url(),
-        )
 
     if wants_json(request):
         payload = {
@@ -636,6 +630,13 @@ def node_detail(request, node_slug):
             Post.objects.filter(pk__in=liked_ids).values_list("slug", flat=True)
         )
 
+    # Подписка на узел
+    is_subscribed = False
+    if request.user.is_authenticated:
+        is_subscribed = NodeSubscription.objects.filter(
+            user=request.user, node=node
+        ).exists()
+
     return render(
         request,
         "forum/node_detail.html",
@@ -645,9 +646,27 @@ def node_detail(request, node_slug):
             "liked_slugs": liked_slugs,
             "total_posts": total_posts,
             "total_likes": total_likes,
+            "is_subscribed": is_subscribed,
             "is_god": is_god(request.user),
         },
     )
+
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_node_subscription(request, node_slug):
+    """Подписаться/отписаться от узла."""
+    node = get_object_or_404(Node, slug=node_slug, is_active=True)
+    sub = NodeSubscription.objects.filter(
+        user=request.user, node=node
+    ).first()
+    if sub:
+        sub.delete()
+        messages.success(request, f"Вы отписались от «{node.name}».")
+    else:
+        NodeSubscription.objects.create(user=request.user, node=node)
+        messages.success(request, f"Вы подписались на «{node.name}». Будут приходить случайные посты.")
+    return redirect("forum:node_detail", node_slug=node.slug)
 
 
 @login_required
@@ -720,6 +739,40 @@ def search_view(request):
 def custom_404(request, exception=None):
     """Кастомная страница 404 ошибки вместо стандартной."""
     return render(request, "404.html", status=404)
+
+
+# ── PWA: manifest.json ──────────────────────────────────────────────────────
+
+def manifest_json(request):
+    """Web App Manifest для PWA."""
+    base = f"{request.scheme}://{request.get_host()}"
+    return JsonResponse(
+        {
+            "name": "Entropy",
+            "short_name": "Entropy",
+            "description": "Форум с энтропией — посты живут ограниченное время",
+            "start_url": "/",
+            "display": "standalone",
+            "background_color": "#000000",
+            "theme_color": "#000000",
+            "orientation": "portrait",
+            "icons": [
+                {
+                    "src": f"{base}/static/img/favicon.png",
+                    "sizes": "192x192",
+                    "type": "image/png",
+                    "purpose": "any",
+                },
+                {
+                    "src": f"{base}/static/img/favicon.png",
+                    "sizes": "512x512",
+                    "type": "image/png",
+                    "purpose": "any",
+                },
+            ],
+        },
+        content_type="application/manifest+json",
+    )
 
 
 # ── SEO: robots.txt ──────────────────────────────────────────────────────────

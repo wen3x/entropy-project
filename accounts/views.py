@@ -1,10 +1,13 @@
+import json
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.db.models import F
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -125,6 +128,77 @@ def streaks_page(request):
             "has_free_post": False,
         }
     return render(request, "accounts/streaks.html", ctx)
+
+
+@login_required
+@require_http_methods(["POST"])
+def save_push_subscription(request):
+    """Сохранить push-подписку браузера."""
+    from accounts.models import PushSubscription
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    endpoint = data.get("endpoint", "")
+    keys = data.get("keys", {})
+    p256dh = keys.get("p256dh", "")
+    auth = keys.get("auth", "")
+
+    if not endpoint or not p256dh or not auth:
+        return JsonResponse({"ok": False, "error": "Missing fields"}, status=400)
+
+    PushSubscription.objects.update_or_create(
+        user=request.user,
+        endpoint=endpoint,
+        defaults={"p256dh": p256dh, "auth": auth},
+    )
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_push_subscription(request):
+    """Удалить push-подписку браузера."""
+    from accounts.models import PushSubscription
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    endpoint = data.get("endpoint", "")
+    if endpoint:
+        PushSubscription.objects.filter(
+            user=request.user, endpoint=endpoint
+        ).delete()
+    return JsonResponse({"ok": True})
+
+
+@require_http_methods(["GET"])
+def vapid_public_key(request):
+    """Отдать публичный VAPID ключ для подписки на push."""
+    return JsonResponse({"public_key": settings.WEBPUSH_VAPID_PUBLIC_KEY})
+
+
+
+@require_http_methods(["GET"])
+def cron_trigger(request):
+    """Запустить send_random_post_notifications по токену (бесплатная замена Render Cron)."""
+    token = request.GET.get("token", "")
+    expected = settings.CRON_SECRET_TOKEN
+
+    if not expected:
+        return JsonResponse({"ok": False, "error": "CRON_SECRET_TOKEN not configured"}, status=500)
+    if token != expected:
+        return JsonResponse({"ok": False, "error": "Forbidden"}, status=403)
+
+    try:
+        call_command("send_random_post_notifications")
+        return JsonResponse({"ok": True, "message": "Notifications sent"})
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
 
 
 def vitality_expired(request):

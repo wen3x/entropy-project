@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .models import (
     Notification,
+    PushSubscription,
     Quest,
     ShopItem,
     User,
@@ -10,6 +11,12 @@ from .models import (
     UserQuestProgress,
     UserQuestSlot,
 )
+
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ("user", "endpoint", "created_at")
+    list_filter = ("created_at",)
 
 
 @admin.register(Notification)
