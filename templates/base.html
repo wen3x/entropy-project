@@ -54,7 +54,6 @@
   <header class="entropy-header sticky top-0 z-40">
     <nav class="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4">
       <div class="flex min-w-0 items-center gap-2 sm:gap-4">
-        {% if user.is_authenticated %}
         <button type="button" id="menu-toggle"
           class="entropy-btn flex h-11 w-11 shrink-0 items-center justify-center p-0"
           aria-label="Открыть меню">
@@ -62,7 +61,6 @@
             <path stroke-linecap="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"/>
           </svg>
         </button>
-        {% endif %}
         {% include "includes/logo.html" %}
       </div>
 
@@ -90,16 +88,15 @@
               <span class="notif-badge absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center px-1 text-[10px] font-bold">{{ unread_notifications }}</span>
             {% endif %}
           </a>
-          <a href="{% url 'profile_detail' user.username %}" class="font-semibold hover:underline">Профиль</a>
+          <a href="{% url 'profile_detail' user.username %}" class="entropy-btn px-3 py-1.5 text-sm font-semibold">Профиль</a>
         {% else %}
-          <a href="{% url 'login' %}" class="font-semibold hover:underline">Вход</a>
+          <a href="{% url 'login' %}" class="entropy-btn px-3 py-1.5 text-sm font-semibold">Вход</a>
           <a href="{% url 'register' %}" class="entropy-btn-primary px-3 py-1.5 text-sm font-semibold">Регистрация</a>
         {% endif %}
       </div>
     </nav>
   </header>
 
-  {% if user.is_authenticated %}
   <div id="sidebar-overlay" class="pointer-events-none fixed inset-0 z-50 opacity-0" style="background:var(--entropy-overlay)" aria-hidden="true"></div>
   <aside id="sidebar-panel" class="fixed left-0 top-0 z-50 flex h-full w-72 -translate-x-full flex-col border-r">
     <div class="flex items-center justify-between border-b entropy-border px-4 py-4">
@@ -107,22 +104,28 @@
       <button type="button" id="menu-close" class="entropy-btn h-11 w-11 shrink-0 p-0 text-lg leading-none" aria-label="Закрыть">&times;</button>
     </div>
     <nav class="flex flex-1 flex-col gap-2 p-4">
-      <a href="{% url 'forum:search' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">🔍 Поиск</a>
-      <a href="{% url 'forum:node_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">☰ Узлы</a>
+      <a href="{% url 'forum:node_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Узлы</a>
       <a href="{% url 'forum:graveyard_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Кладбище</a>
       <a href="{% url 'shop' %}"                 class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Магазин</a>
-      <a href="{% url 'streaks' %}"              class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Система стриков</a>
+      <a href="{% url 'streaks' %}"              class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Стрики</a>
       <a href="{{ donation_alerts_url }}" target="_blank" rel="noopener noreferrer" class="da-btn">DonationAlerts</a>
       {% if is_god %}
       <a href="{% url 'secret_panel' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Секретная панель</a>
       {% endif %}
+      
+      {% if user.is_authenticated %}
       <form action="{% url 'logout' %}" method="post" class="mt-auto">
         {% csrf_token %}
         <button type="submit" class="entropy-btn w-full px-4 py-3 text-sm font-semibold">Выйти</button>
       </form>
+      {% else %}
+      <div class="mt-auto flex flex-col gap-2">
+        <a href="{% url 'login' %}" class="entropy-btn w-full px-4 py-3 text-center text-sm font-semibold">Вход</a>
+        <a href="{% url 'register' %}" class="entropy-btn-primary w-full px-4 py-3 text-center text-sm font-semibold">Регистрация</a>
+      </div>
+      {% endif %}
     </nav>
   </aside>
-  {% endif %}
 
   <main class="mx-auto max-w-5xl px-4 py-8">
     {% if messages %}

@@ -83,12 +83,37 @@ def extend_post_on_comment(post: Post, user) -> bool:
 
 def post_list(request):
     now = timezone.now()
-    posts = (
-        Post.objects.filter(expires_at__gt=now, is_active=True)
-        .select_related("author", "node")
-        .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
-        .order_by("-is_golden", "-is_pinned", "-like_count", "-created_at")
-    )
+    
+    # ── Inline search ──
+    q = request.GET.get("q", "").strip()
+    search_results = None
+    if q:
+        node_results = Node.objects.filter(
+            Q(name__icontains=q) | Q(slug__icontains=q) | Q(description__icontains=q),
+            is_active=True,
+        )[:10]
+        post_results = (
+            Post.objects.filter(
+                Q(title__icontains=q) | Q(content__icontains=q),
+                is_active=True,
+                expires_at__gt=now,
+            )
+            .select_related("author", "node")
+            .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))[:20]
+        )
+        search_results = {"q": q, "nodes": node_results, "posts": post_results}
+    
+    # ── Regular post list ──
+    if not q:
+        posts = (
+            Post.objects.filter(expires_at__gt=now, is_active=True)
+            .select_related("author", "node")
+            .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
+            .order_by("-is_golden", "-is_pinned", "-like_count", "-created_at")
+        )
+    else:
+        posts = Post.objects.none()
+    
     liked_slugs = set()
     post_ct = ContentType.objects.get_for_model(Post)
     if request.user.is_authenticated:
@@ -107,6 +132,7 @@ def post_list(request):
         "posts": posts,
         "liked_slugs": liked_slugs,
         "is_god": is_god(request.user),
+        "search_results": search_results,
     }
     if request.user.is_authenticated:
         context.update(get_user_quests_context(request.user))

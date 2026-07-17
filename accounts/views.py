@@ -15,7 +15,7 @@ from .forms import RegistrationForm
 from .models import ShopItem
 from .quests import ensure_default_quests, get_user_quests_context
 from .shop import ensure_default_shop_items, get_visible_shop_items, purchase_item, reset_theme
-from .streaks import get_streak_page_context
+from .streaks import STREAK_MAX_DAYS, STREAK_SCHEDULE, get_streak_page_context
 from .theme import get_palette, PALETTES
 
 
@@ -34,12 +34,12 @@ def register(request):
     return render(request, "accounts/register.html", {"form": form})
 
 
-@login_required
 def profile_redirect(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
     return redirect("profile_detail", username=request.user.username)
 
 
-@login_required
 def profile_detail(request, username):
     profile_user = get_object_or_404(
         get_user_model(), username__iexact=username
@@ -113,25 +113,32 @@ def notifications_mark_read(request):
     return redirect("notifications_list")
 
 
-@login_required
 def streaks_page(request):
-    return render(
-        request,
-        "accounts/streaks.html",
-        get_streak_page_context(request.user),
-    )
+    if request.user.is_authenticated:
+        ctx = get_streak_page_context(request.user)
+    else:
+        ctx = {
+            "schedule": STREAK_SCHEDULE,
+            "current_streak": 0,
+            "progress_pct": 0,
+            "streak_max_days": STREAK_MAX_DAYS,
+            "has_free_post": False,
+        }
+    return render(request, "accounts/streaks.html", ctx)
 
 
 def vitality_expired(request):
     return render(request, "accounts/vitality_expired.html")
 
 
-@login_required
 def shop_view(request):
     ensure_default_shop_items()
     items = get_visible_shop_items()
 
     if request.method == "POST":
+        if not request.user.is_authenticated:
+            messages.error(request, "Войдите в аккаунт для покупок.")
+            return redirect("shop")
         action = request.POST.get("action", "buy")
 
         if action == "reset_theme":
@@ -156,16 +163,26 @@ def shop_view(request):
                 messages.error(request, msg)
         return redirect("shop")
 
-    user = request.user
+    if request.user.is_authenticated:
+        user_tokens = request.user.tokens
+        has_basic_colors = request.user.has_basic_colors
+        has_gold_color = request.user.has_gold_color
+        current_color = request.user.profile_color
+    else:
+        user_tokens = 0
+        has_basic_colors = False
+        has_gold_color = False
+        current_color = ""
+
     return render(
         request,
         "accounts/shop.html",
         {
             "shop_items": items,
-            "user_tokens": user.tokens,
-            "has_basic_colors": user.has_basic_colors,
-            "has_gold_color": user.has_gold_color,
-            "current_color": user.profile_color,
+            "user_tokens": user_tokens,
+            "has_basic_colors": has_basic_colors,
+            "has_gold_color": has_gold_color,
+            "current_color": current_color,
         },
     )
 

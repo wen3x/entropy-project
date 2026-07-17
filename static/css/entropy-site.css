@@ -167,6 +167,16 @@ body {
 
 .entropy-no-wrap { white-space: nowrap; }
 
+.entropy-section-title {
+  font-weight: 800;
+  font-size: 1.125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 0.75rem;
+  border-bottom: var(--entropy-border-width) solid var(--entropy-border);
+  margin-bottom: 1rem;
+}
+
 /* ── Links ── */
 a {
   color: inherit;

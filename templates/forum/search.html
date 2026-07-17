@@ -48,7 +48,7 @@
                 <a href="{% if post.node %}{% url 'forum:post_detail_in_node' post.node.slug post.slug %}{% else %}{% url 'forum:post_detail' post.slug %}{% endif %}" class="hover:underline">{{ post.title }}</a>
               </h3>
               <p class="mt-1 text-sm entropy-text-soft">{{ post.content|truncatechars:120 }}</p>
-              <p class="mt-1 text-xs entropy-text-faint">❤️ {{ post.like_count }}</p>
+              <p class="mt-1 text-xs entropy-text-faint">{{ post.like_count }} лайков</p>
             </article>
           {% endfor %}
         </div>

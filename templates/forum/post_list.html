@@ -18,13 +18,73 @@
 
 {% block content %}
   <div class="mb-8 border-b entropy-border pb-6">
-    <h1 class="text-3xl font-extrabold uppercase tracking-tight">Активные посты</h1>
-    <p class="mt-2 text-sm entropy-text-muted">Только живые темы с неистёкшим сроком.</p>
+    <h1 class="text-3xl font-extrabold uppercase tracking-tight">{% if search_results %}"{{ search_results.q }}"{% else %}Активные посты{% endif %}</h1>
+    <p class="mt-2 text-sm entropy-text-muted">
+      {% if search_results %}
+        Результаты поиска
+      {% else %}
+        Только живые темы с неистёкшим сроком.
+      {% endif %}
+    </p>
+    
+    <form method="get" action="{% url 'forum:post_list' %}" class="mt-5 flex gap-2">
+      <input type="text" name="q" value="{{ search_results.q|default:'' }}" placeholder="Поиск узлов и постов..."
+             class="entropy-input flex-1">
+      <button type="submit" class="entropy-btn-primary px-5 py-2 text-sm font-semibold">Найти</button>
+    </form>
   </div>
 
-  {% if not posts %}
+  {% if search_results %}
+    {# ── Search results ── #}
+    <section class="mb-8">
+      <h2 class="entropy-section-title">Узлы</h2>
+      {% if search_results.nodes %}
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {% for node in search_results.nodes %}
+            <a href="{% url 'forum:node_detail' node.slug %}" class="entropy-card p-4 block hover:opacity-80 transition-opacity">
+              <p class="font-bold">{{ node.name }}</p>
+              {% if node.description %}
+                <p class="mt-1 text-sm entropy-text-muted">{{ node.description|truncatechars:80 }}</p>
+              {% endif %}
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-sm entropy-text-faint">Узлы не найдены.</p>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2 class="entropy-section-title">Посты</h2>
+      {% if search_results.posts %}
+        <div class="space-y-3">
+          {% for post in search_results.posts %}
+            <article class="entropy-card p-4">
+              <p class="text-xs entropy-text-faint">
+                {% if post.node %}
+                  <a href="{% url 'forum:node_detail' post.node.slug %}" class="hover:underline font-semibold">{{ post.node.name }}</a>
+                  &middot;
+                {% endif %}
+                <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ post.author.username }}</a>
+                &middot; {{ post.created_at|date:"d.m.Y H:i" }}
+              </p>
+              <h3 class="mt-1 font-bold">
+                <a href="{% if post.node %}{% url 'forum:post_detail_in_node' post.node.slug post.slug %}{% else %}{% url 'forum:post_detail' post.slug %}{% endif %}" class="hover:underline">{{ post.title }}</a>
+              </h3>
+              <p class="mt-1 text-sm entropy-text-soft">{{ post.content|truncatechars:120 }}</p>
+              <p class="mt-1 text-xs entropy-text-faint">{{ post.like_count }} лайков</p>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-sm entropy-text-faint">Посты не найдены.</p>
+      {% endif %}
+      <p class="mt-6"><a href="{% url 'forum:post_list' %}" class="text-sm font-semibold hover:underline">← Очистить поиск</a></p>
+    </section>
+
+  {% elif not posts %}
     <p class="border entropy-border-muted px-6 py-12 text-center entropy-text-faint">
-      Нет активных постов.{% if user.is_authenticated %} Создайте новый - в меню «Новый пост».{% endif %}
+      Нет активных постов.{% if user.is_authenticated %} Создайте новый через меню слева.{% endif %}
     </p>
   {% endif %}
 

@@ -20,8 +20,8 @@
       <p class="mt-2 text-sm entropy-text-muted">{{ node.description }}</p>
     {% endif %}
     <div class="mt-3 flex gap-4 text-xs entropy-text-faint">
-      <span>📄 {{ total_posts }} постов</span>
-      <span>❤️ {{ total_likes }} лайков</span>
+      <span>{{ total_posts }} постов</span>
+      <span>{{ total_likes }} лайков</span>
     </div>
     <div class="mt-6">
       <a href="{% url 'forum:post_create_in_node' node.slug %}" class="entropy-btn-primary inline-block px-6 py-3 text-sm font-semibold">+ Новый пост</a>
