@@ -665,7 +665,7 @@ def toggle_node_subscription(request, node_slug):
         messages.success(request, f"Вы отписались от «{node.name}».")
     else:
         NodeSubscription.objects.create(user=request.user, node=node)
-        messages.success(request, f"Вы подписались на «{node.name}». Будут приходить случайные посты.")
+        messages.success(request, f"Вы подписались на «{node.name}». Будут приходить уведомления о постах из этого узла.")
     return redirect("forum:node_detail", node_slug=node.slug)
 
 

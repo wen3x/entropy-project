@@ -2,15 +2,15 @@ import random
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand
-from django.db.models import F
 from django.utils import timezone
 
 from accounts.models import NodeSubscription, Notification
+from accounts.notifications import notify
 from forum.models import Post
 
 
 class Command(BaseCommand):
-    help = "Отправляет уведомления со случайными постами из отслеживаемых узлов (раз в 8–24ч)."
+    help = "Рекомендует посты из отслеживаемых узлов (раз в 8–24ч)."
 
     def handle(self, *args, **options):
         now = timezone.now()
@@ -39,10 +39,10 @@ class Command(BaseCommand):
                 # Если в узле нет активных постов, пропускаем
                 continue
 
-            Notification.objects.create(
+            notify(
                 user=sub.user,
                 kind=Notification.Kind.NODE_RANDOM_POST,
-                message=f"Случайный пост из «{sub.node.name}»: {post.title}",
+                message=f"Рекомендуем прочитать: {post.title}",
                 link=post.get_absolute_url(),
             )
 

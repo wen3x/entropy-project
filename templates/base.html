@@ -269,22 +269,16 @@
   (function () {
     // Только для авторизованных пользователей
     {% if user.is_authenticated %}
-    var pushStatus = localStorage.getItem('entropy-push-enabled');
 
-    // Подписываемся на push, когда пользователь уже дал разрешение
+    // ── Авто-подписка при загрузке, если разрешение уже дано ──
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       navigator.serviceWorker.ready.then(function (reg) {
         reg.pushManager.getSubscription().then(function (sub) {
-          // Если уже подписаны и разрешение есть — ок
           if (sub) {
             localStorage.setItem('entropy-push-enabled', 'granted');
             return;
           }
-
-          // Если статус уже определён (denied) — не спамим
-          if (pushStatus === 'denied') return;
-
-          // Если ранее разрешили — подписываемся
+          if (localStorage.getItem('entropy-push-enabled') === 'denied') return;
           if (Notification.permission === 'granted') {
             localStorage.setItem('entropy-push-enabled', 'granted');
             subscribeToPush(reg);
@@ -295,63 +289,76 @@
       });
     }
 
+    // ── Подписка на push (возвращает Promise) ──
     function subscribeToPush(reg) {
-      // Получаем VAPID public key
-      fetch('{% url "vapid_public_key" %}').then(function (r) { return r.json(); }).then(function (data) {
-        if (!data.public_key) return;
-
-        var vapidKey = urlBase64ToUint8Array(data.public_key);
-
-        reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: vapidKey,
-        }).then(function (subscription) {
-          // Отправляем подписку на сервер
-          fetch('{% url "save_push_subscription" %}', {
+      return fetch('{% url "vapid_public_key" %}')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.public_key) throw new Error('No VAPID public key');
+          var vapidKey = urlBase64ToUint8Array(data.public_key);
+          return reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: vapidKey,
+          });
+        })
+        .then(function (subscription) {
+          return fetch('{% url "save_push_subscription" %}', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
             },
             body: JSON.stringify(subscription.toJSON()),
-          }).then(function (r) { return r.json(); }).then(function (res) {
-            if (res.ok) {
-              localStorage.setItem('entropy-push-enabled', 'granted');
-            }
-          }).catch(function () {});
-        }).catch(function (err) {
-          if (err.code === 20) { // AbortError / permission denied
+          });
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (res.ok) {
+            localStorage.setItem('entropy-push-enabled', 'granted');
+          } else {
+            throw new Error('Server rejected subscription');
+          }
+        })
+        .catch(function (err) {
+          if (err.code === 20) {
             localStorage.setItem('entropy-push-enabled', 'denied');
           }
+          console.error('Push subscription error:', err);
+          throw err;
         });
-      }).catch(function () {});
     }
 
-    // Просим разрешение на уведомления при клике на кнопку
+    // ── Запрашиваем разрешение при клике на колокольчик ──
     document.addEventListener('click', function (e) {
       var notifBtn = e.target.closest('a[href*="notifications"]');
       if (!notifBtn) return;
+      var href = notifBtn.getAttribute('href');
 
       if ('Notification' in window && Notification.permission === 'default') {
         e.preventDefault();
         Notification.requestPermission().then(function (perm) {
           if (perm === 'granted') {
             localStorage.setItem('entropy-push-enabled', 'granted');
-            navigator.serviceWorker.ready.then(function (reg) {
-              reg.pushManager.getSubscription().then(function (sub) {
-                if (!sub) subscribeToPush(reg);
+            return navigator.serviceWorker.ready.then(function (reg) {
+              return reg.pushManager.getSubscription().then(function (sub) {
+                if (!sub) {
+                  return subscribeToPush(reg);
+                }
               });
             });
           } else {
             localStorage.setItem('entropy-push-enabled', 'denied');
           }
-          // Переходим на страницу уведомлений
-          window.location.href = notifBtn.getAttribute('href');
+        }).then(function () {
+          window.location.href = href;
+        }).catch(function () {
+          // В случае ошибки всё равно переходим
+          window.location.href = href;
         });
       }
     });
 
-    // Helper: base64 to Uint8Array
+    // ── Helper: base64url → Uint8Array ──
     function urlBase64ToUint8Array(base64String) {
       var padding = '='.repeat((4 - base64String.length % 4) % 4);
       var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');

@@ -218,7 +218,7 @@ class Notification(models.Model):
         POST_LIKED = "post_liked", "Лайк поста"
         POST_DYING = "post_dying", "Пост умирает"
         QUEST_COMPLETE = "quest_complete", "Квест выполнен"
-        NODE_RANDOM_POST = "node_random_post", "Рандомный пост из узла"
+        NODE_RANDOM_POST = "node_random_post", "Рекомендация поста"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
