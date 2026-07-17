@@ -2,7 +2,7 @@
    Entropy — Service Worker
    ======================================================================== */
 
-const CACHE = "entropy-v1";
+const CACHE = "entropy-v2";
 const ASSETS = [
   "/static/css/entropy-site.css",
   "/static/js/entropy-theme.js",
