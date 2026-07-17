@@ -90,7 +90,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Настройка WhiteNoise для сжатия и долгого кэширования
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # 9. Пользователи и редиректы
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
