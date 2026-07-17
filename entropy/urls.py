@@ -20,6 +20,8 @@ from django.urls import include, path
 from accounts import views as account_views
 from forum import views as forum_views
 
+handler404 = 'forum.views.custom_404'
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),

@@ -250,7 +250,15 @@ def _post_detail_view(request, slug, node=None):
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def post_create(request):
+def post_create(request, node_slug=None):
+    """Создание поста. Если передан node_slug, пост привязывается к узлу."""
+    node = None
+    if node_slug:
+        node = get_object_or_404(Node, slug=node_slug, is_active=True)
+    else:
+        # По умолчанию — узел "global"
+        node = Node.objects.filter(slug="global", is_active=True).first()
+
     if request.method == "POST":
         form = PostForm(request.POST)
         if form.is_valid():
@@ -278,6 +286,8 @@ def post_create(request):
                     User.objects.filter(pk=locked.pk).update(**updates)
                     post = form.save(commit=False)
                     post.author_id = locked.pk
+                    if node:
+                        post.node = node
                     post.save()
                     if use_free:
                         messages.success(
@@ -293,6 +303,7 @@ def post_create(request):
         "forum/post_form.html",
         {
             "form": form,
+            "node": node,
             "has_free_post": request.user.has_free_post,
             "post_cost": POST_CREATION_COST,
         },
@@ -676,6 +687,13 @@ def search_view(request):
             "is_god": is_god(request.user),
         },
     )
+
+
+# ── CUSTOM 404 ERROR HANDLER ──────────────────────────────────────────────
+
+def custom_404(request, exception=None):
+    """Кастомная страница 404 ошибки вместо стандартной."""
+    return render(request, "404.html", status=404)
 
 
 # ── SEO: robots.txt ──────────────────────────────────────────────────────────

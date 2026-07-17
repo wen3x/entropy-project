@@ -5,6 +5,11 @@
 {% block content %}
   <div class="entropy-card mx-auto max-w-2xl p-8">
     <h1 class="text-2xl font-extrabold uppercase tracking-tight">Новый пост</h1>
+    {% if node %}
+    <p class="mt-2 text-sm entropy-text-muted">
+      В узле <a href="{% url 'forum:node_detail' node.slug %}" class="font-bold hover:underline">/n/{{ node.slug }}</a>
+    </p>
+    {% endif %}
     <p class="mt-2 text-sm entropy-text-muted">
       {% if has_free_post %}
         Следующий пост <span class="font-bold entropy-text-emphasis">бесплатный</span> (стрик, день 7).
@@ -30,7 +35,7 @@
       {% endfor %}
       <div class="flex gap-3">
         <button type="submit" class="entropy-btn-primary px-5 py-2.5 text-sm font-semibold">Опубликовать</button>
-        <a href="{% url 'forum:post_list' %}" class="entropy-btn px-5 py-2.5 text-sm font-semibold">Отмена</a>
+        <a href="{% if node %}{% url 'forum:node_detail' node.slug %}{% else %}{% url 'forum:post_list' %}{% endif %}" class="entropy-btn px-5 py-2.5 text-sm font-semibold">Отмена</a>
       </div>
     </form>
   </div>

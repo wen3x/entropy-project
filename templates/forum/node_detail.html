@@ -23,6 +23,9 @@
       <span>📄 {{ total_posts }} постов</span>
       <span>❤️ {{ total_likes }} лайков</span>
     </div>
+    <div class="mt-6">
+      <a href="{% url 'forum:post_create_in_node' node.slug %}" class="entropy-btn-primary inline-block px-6 py-3 text-sm font-semibold">+ Новый пост</a>
+    </div>
   </div>
 
   {% if not posts %}
