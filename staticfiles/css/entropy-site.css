@@ -1,0 +1,756 @@
+/* ========================================================================
+   Entropy — Neobrutalism Minimalism
+   Site theme: light / dark (data-site-theme attribute on <html>)
+   Profile themes are separate and use inline CSS variables.
+   ======================================================================== */
+
+/* ── CSS custom properties (design tokens) ── */
+:root {
+  --entropy-border-width: 2px;
+  --entropy-shadow-x: 3px;
+  --entropy-shadow-y: 3px;
+  --entropy-radius: 0px;
+}
+
+/* ── Light theme (default) ── */
+html[data-site-theme="light"],
+html:not([data-site-theme]) {
+  color-scheme: light;
+
+  --entropy-bg: #f4f4f0;
+  --entropy-surface: #ffffff;
+  --entropy-surface-muted: #ebebe6;
+  --entropy-surface-hover: #f0f0eb;
+
+  --entropy-fg: #000000;
+  --entropy-fg-muted: rgba(0, 0, 0, 0.62);
+  --entropy-fg-faint: rgba(0, 0, 0, 0.48);
+  --entropy-fg-subtle: rgba(0, 0, 0, 0.36);
+  --entropy-fg-soft: rgba(0, 0, 0, 0.78);
+
+  --entropy-on-accent: #ffffff;
+  --entropy-border: #000000;
+  --entropy-border-muted: rgba(0, 0, 0, 0.28);
+  --entropy-border-subtle: rgba(0, 0, 0, 0.14);
+
+  --entropy-shadow-offset: var(--entropy-shadow-x) var(--entropy-shadow-y);
+  --entropy-shadow: var(--entropy-shadow-offset) 0 0 #000000;
+  --entropy-shadow-sm: 2px 2px 0 0 #000000;
+
+  --entropy-overlay: rgba(0, 0, 0, 0.45);
+  --entropy-accent-block: #000000;
+  --entropy-accent-block-hover: #1a1a1a;
+  --entropy-invert-bg: #000000;
+  --entropy-invert-fg: #ffffff;
+  --entropy-header-bg: #ffffff;
+  --entropy-progress-fill: #000000;
+
+  --entropy-scrollbar-thumb: rgba(0, 0, 0, 0.25);
+  --entropy-scrollbar-track: transparent;
+}
+
+/* ── Dark theme ── */
+html[data-site-theme="dark"] {
+  color-scheme: dark;
+
+  --entropy-bg: #0a0a0a;
+  --entropy-surface: #000000;
+  --entropy-surface-muted: rgba(255, 255, 255, 0.06);
+  --entropy-surface-hover: rgba(255, 255, 255, 0.10);
+
+  --entropy-fg: #ffffff;
+  --entropy-fg-muted: rgba(255, 255, 255, 0.62);
+  --entropy-fg-faint: rgba(255, 255, 255, 0.48);
+  --entropy-fg-subtle: rgba(255, 255, 255, 0.36);
+  --entropy-fg-soft: rgba(255, 255, 255, 0.78);
+
+  --entropy-on-accent: #000000;
+  --entropy-border: #ffffff;
+  --entropy-border-muted: rgba(255, 255, 255, 0.28);
+  --entropy-border-subtle: rgba(255, 255, 255, 0.14);
+
+  --entropy-shadow-offset: var(--entropy-shadow-x) var(--entropy-shadow-y);
+  --entropy-shadow: var(--entropy-shadow-offset) 0 0 #ffffff;
+  --entropy-shadow-sm: 2px 2px 0 0 #ffffff;
+
+  --entropy-overlay: rgba(0, 0, 0, 0.72);
+  --entropy-accent-block: #ffffff;
+  --entropy-accent-block-hover: #e8e8e8;
+  --entropy-invert-bg: #ffffff;
+  --entropy-invert-fg: #000000;
+  --entropy-header-bg: #000000;
+  --entropy-progress-fill: #ffffff;
+
+  --entropy-scrollbar-thumb: rgba(255, 255, 255, 0.25);
+  --entropy-scrollbar-track: transparent;
+}
+
+/* ── Theme transition ── */
+html.entropy-theming *,
+html.entropy-theming *::before,
+html.entropy-theming *::after {
+  transition: background 0.25s ease,
+              color 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease,
+              fill 0.2s ease,
+              stroke 0.2s ease !important;
+}
+
+/* ── Reset & base ── */
+html, body {
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--entropy-bg);
+  color: var(--entropy-fg);
+  font-size: 1rem;
+  font-family: "Inter", "ui-sans-serif", "system-ui", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after {
+  border-radius: var(--entropy-radius);
+  border-color: inherit;
+}
+
+::selection {
+  background: var(--entropy-accent-block);
+  color: var(--entropy-on-accent);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--entropy-scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--entropy-scrollbar-thumb);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--entropy-scrollbar-thumb);
+  border-width: 1px;
+}
+
+@supports (scrollbar-color: auto) {
+  * {
+    scrollbar-color: var(--entropy-scrollbar-thumb) var(--entropy-scrollbar-track);
+    scrollbar-width: thin;
+  }
+}
+
+/* ── Typography utilities ── */
+.entropy-text-muted    { color: var(--entropy-fg-muted); }
+.entropy-text-faint    { color: var(--entropy-fg-faint); }
+.entropy-text-subtle   { color: var(--entropy-fg-subtle); }
+.entropy-text-soft     { color: var(--entropy-fg-soft); }
+.entropy-text-emphasis { color: var(--entropy-fg); }
+
+.entropy-border         { border-color: var(--entropy-border) !important; }
+.entropy-border-muted   { border-color: var(--entropy-border-muted) !important; }
+.entropy-border-subtle  { border-color: var(--entropy-border-subtle) !important; }
+.entropy-divide > * + * { border-color: var(--entropy-border); }
+.entropy-divide-muted > * + * { border-color: var(--entropy-border-muted); }
+
+.entropy-fill          { background: var(--entropy-progress-fill); }
+.entropy-surface-muted { background: var(--entropy-surface-muted); }
+.entropy-surface-hover { background: var(--entropy-surface-hover); }
+
+.entropy-no-wrap { white-space: nowrap; }
+
+.entropy-section-title {
+  font-weight: 800;
+  font-size: 1.125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 0.75rem;
+  border-bottom: var(--entropy-border-width) solid var(--entropy-border);
+  margin-bottom: 1rem;
+}
+
+/* ── Links ── */
+a {
+  color: inherit;
+}
+
+a.entropy-link,
+.entropy-link a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 0.15s ease;
+}
+
+a.entropy-link:hover,
+.entropy-link a:hover {
+  opacity: 0.7;
+}
+
+/* ── Layout chrome ── */
+.entropy-header {
+  border-bottom: var(--entropy-border-width) solid var(--entropy-border);
+  background: var(--entropy-header-bg);
+  color: var(--entropy-fg);
+}
+
+.entropy-footer {
+  border-top: var(--entropy-border-width) solid var(--entropy-border);
+  color: var(--entropy-fg-faint);
+}
+
+#sidebar-overlay {
+  transition: opacity 0.2s;
+}
+
+#sidebar-panel {
+  transition: transform 0.25s ease;
+  border-color: var(--entropy-border);
+  color: var(--entropy-fg);
+  background: var(--entropy-surface);
+  border-right-width: var(--entropy-border-width);
+}
+
+/* ── Cards & panels ── */
+.entropy-card,
+.entropy-panel {
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  background: var(--entropy-surface);
+  color: var(--entropy-fg);
+  box-shadow: var(--entropy-shadow);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.entropy-card *,
+.entropy-panel * {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+.entropy-card a,
+.entropy-card code,
+.entropy-card pre,
+.entropy-panel a,
+.entropy-panel code,
+.entropy-panel pre {
+  word-break: break-word;
+  overflow-x: auto;
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* ── Forms ── */
+.entropy-input {
+  background: var(--entropy-surface);
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  color: var(--entropy-fg);
+  font-size: 1rem;
+  box-shadow: none;
+  padding: 0.5rem 0.75rem;
+}
+
+.entropy-input:focus {
+  outline: var(--entropy-border-width) solid var(--entropy-border);
+  outline-offset: 1px;
+}
+
+.entropy-input::placeholder {
+  color: var(--entropy-fg-subtle);
+}
+
+input, textarea, select {
+  background: var(--entropy-surface) !important;
+  border: var(--entropy-border-width) solid var(--entropy-border) !important;
+  color: var(--entropy-fg) !important;
+  font-size: 1rem !important;
+  border-radius: 0 !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--entropy-fg-subtle) !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: var(--entropy-border-width) solid var(--entropy-border);
+  outline-offset: 1px;
+}
+
+/* ── Buttons ── */
+.entropy-btn {
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  background: var(--entropy-surface);
+  color: var(--entropy-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  box-shadow: var(--entropy-shadow);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.entropy-btn:hover {
+  background: var(--entropy-accent-block);
+  color: var(--entropy-on-accent);
+  text-shadow: none;
+}
+
+.entropy-btn:active {
+  box-shadow: none;
+  transform: translate(var(--entropy-shadow-x), var(--entropy-shadow-y));
+}
+
+.entropy-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.entropy-btn-primary {
+  background: var(--entropy-accent-block);
+  color: var(--entropy-on-accent);
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  text-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  box-shadow: var(--entropy-shadow);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.entropy-btn-primary:hover {
+  background: var(--entropy-surface);
+  color: var(--entropy-fg);
+}
+
+.entropy-btn-primary:active {
+  box-shadow: none;
+  transform: translate(var(--entropy-shadow-x), var(--entropy-shadow-y));
+}
+
+.entropy-btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.entropy-btn-invert {
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  background: var(--entropy-invert-bg);
+  color: var(--entropy-invert-fg);
+  box-shadow: var(--entropy-shadow);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.entropy-btn-invert:hover {
+  background: var(--entropy-surface);
+  color: var(--entropy-fg);
+}
+
+.entropy-btn-invert:active {
+  box-shadow: none;
+  transform: translate(var(--entropy-shadow-x), var(--entropy-shadow-y));
+}
+
+.entropy-btn-invert:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.entropy-btn-sm {
+  min-height: 2rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.entropy-badge-invert {
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  background: var(--entropy-invert-bg);
+  color: var(--entropy-invert-fg);
+  display: inline-block;
+}
+
+.entropy-option-selected {
+  border: var(--entropy-border-width) solid var(--entropy-border) !important;
+  background: var(--entropy-accent-block) !important;
+  color: var(--entropy-on-accent) !important;
+  box-shadow: var(--entropy-shadow);
+}
+
+.entropy-icon-btn {
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  background: var(--entropy-surface);
+  color: var(--entropy-fg);
+  box-shadow: var(--entropy-shadow);
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.entropy-icon-btn:hover {
+  background: var(--entropy-accent-block);
+  color: var(--entropy-on-accent);
+}
+
+.entropy-icon-btn:active {
+  box-shadow: none;
+  transform: translate(var(--entropy-shadow-x), var(--entropy-shadow-y));
+}
+
+.entropy-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Theme toggle ── */
+.entropy-theme-toggle {
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  background: var(--entropy-surface);
+  color: var(--entropy-fg);
+  box-shadow: var(--entropy-shadow);
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.entropy-theme-toggle:active {
+  box-shadow: none;
+  transform: translate(var(--entropy-shadow-x), var(--entropy-shadow-y));
+}
+
+.entropy-theme-toggle .theme-icon-light { display: none; }
+.entropy-theme-toggle .theme-icon-dark  { display: block; }
+
+html[data-site-theme="dark"] .entropy-theme-toggle .theme-icon-light { display: block; }
+html[data-site-theme="dark"] .entropy-theme-toggle .theme-icon-dark  { display: none; }
+
+/* ── Token counter & badges ── */
+.token-counter {
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  background: var(--entropy-surface);
+  box-shadow: var(--entropy-shadow-sm);
+}
+
+.notif-badge {
+  background: var(--entropy-accent-block);
+  color: var(--entropy-on-accent);
+  text-shadow: none;
+  border: 1px solid var(--entropy-border);
+}
+
+/* ── Messages & toasts ── */
+.entropy-message {
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  background: var(--entropy-surface);
+  box-shadow: var(--entropy-shadow);
+}
+
+.entropy-message--muted {
+  border-color: var(--entropy-border-muted);
+  color: var(--entropy-fg-soft);
+}
+
+#like-toast {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  box-shadow: var(--entropy-shadow);
+}
+
+#like-toast:not(.hidden) {
+  animation: entropy-toast-in 0.25s ease-out;
+}
+
+@keyframes entropy-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ── Post effects ── */
+@keyframes entropy-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+
+.post-dying-shake { animation: entropy-shake 0.4s ease-in-out infinite; }
+.post-dying-blur  { opacity: 0.7; filter: blur(1px); }
+
+.post-golden {
+  border: var(--entropy-border-width) dashed #facc15 !important;
+  border-top: var(--entropy-border-width) dashed #facc15 !important;
+  box-shadow: 3px 3px 0 0 #e6b422, 0 0 0 1px rgba(250, 204, 21, 0.15);
+}
+
+html[data-site-theme="dark"] .post-golden {
+  box-shadow: 3px 3px 0 0 #facc15, 0 0 0 1px rgba(250, 204, 21, 0.15);
+}
+
+.post-pinned {
+  border-style: solid;
+  border-color: var(--entropy-border);
+}
+
+/* ── DonationAlerts (neobrutalist 3D block style) ── */
+.da-btn {
+  display: block;
+  text-align: center;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #000;
+  background: linear-gradient(135deg, #ff8c00 0%, #ff6a00 50%, #ff4500 100%);
+  border: var(--entropy-border-width) solid #cc5500;
+  min-height: 2.75rem;
+  border-radius: 0;
+  box-shadow: 3px 3px 0 0 #cc5500;
+  transition: box-shadow 0.15s ease, transform 0.1s ease, filter 0.2s ease;
+}
+
+.da-btn:hover {
+  color: #000;
+  filter: brightness(1.08);
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 0 #cc5500, 0 0 18px rgba(255, 106, 0, 0.55);
+}
+
+.da-btn:active {
+  box-shadow: none;
+  transform: translate(3px, 3px);
+}
+
+/* ── Logo ── */
+.entropy-logo-img { display: block; max-height: 2.25rem; }
+#sidebar-panel .entropy-logo-img { max-height: 2rem; max-width: 9.5rem; }
+
+html[data-site-theme="light"] .entropy-logo-img,
+html:not([data-site-theme]) .entropy-logo-img {
+  filter: invert(1);
+}
+
+.countdown-pill { white-space: nowrap; }
+
+.post-card-title { word-break: break-all; }
+.post-card-title a {
+  text-decoration: none;
+}
+.post-card-title a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.post-card-inner > div:first-child { overflow: hidden; min-width: 0; }
+
+.post-card-link::after {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 1;
+  content: "";
+}
+
+.post-card-inner > div:last-child,
+.post-card-inner > div:last-child * { position: relative; z-index: 2; }
+.post-card-inner > div:first-child > p a { position: relative; z-index: 2; }
+
+/* ── Profile neobrutalism (separate from site theme) ── */
+.profile-card {
+  border-width: var(--entropy-border-width);
+  border-style: solid;
+  background: var(--entropy-surface);
+  box-shadow: var(--profile-shadow, var(--entropy-shadow));
+}
+
+.profile-stat {
+  border-width: var(--entropy-border-width);
+  border-style: solid;
+}
+
+.profile-streak-box {
+  border-width: var(--entropy-border-width);
+  border-style: solid;
+  box-shadow: var(--profile-shadow-sm, 2px 2px 0 0 var(--profile-fg, #000));
+}
+
+.profile-btn {
+  border-width: var(--entropy-border-width);
+  border-style: solid;
+  background: var(--entropy-surface);
+  box-shadow: var(--profile-shadow-sm, 2px 2px 0 0 var(--profile-fg, #000));
+  font-weight: 600;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.profile-btn:hover {
+  background: var(--entropy-accent-block);
+  color: var(--entropy-on-accent);
+}
+
+.profile-btn:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+.profile-theme-label {
+  letter-spacing: 0.15em;
+  font-weight: 700;
+}
+
+/* ── Preferences: reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .post-dying-shake {
+    animation: none !important;
+  }
+
+  #like-toast:not(.hidden) {
+    animation: none !important;
+  }
+
+  html.entropy-theming *,
+  html.entropy-theming *::before,
+  html.entropy-theming *::after {
+    transition: none !important;
+  }
+}
+
+/* ── PWA Install Banner ── */
+.pwa-install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: var(--entropy-surface);
+  border-top: var(--entropy-border-width) solid var(--entropy-border);
+  box-shadow: 0 -3px 0 0 var(--entropy-border);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  padding: 0;
+}
+
+.pwa-install-banner--visible {
+  transform: translateY(0);
+}
+
+.pwa-install-banner__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+}
+
+.pwa-install-banner__text {
+  font-size: 0.9375rem;
+  color: var(--entropy-fg);
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.pwa-install-banner__text strong {
+  font-weight: 700;
+}
+
+.pwa-install-banner__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.pwa-install-banner__actions .entropy-btn,
+.pwa-install-banner__actions .entropy-btn-primary {
+  min-height: 2.25rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .pwa-install-banner__inner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+  .pwa-install-banner__actions {
+    justify-content: center;
+  }
+}
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  main { padding-left: 0.75rem; padding-right: 0.75rem; padding-top: 1.25rem; }
+  .entropy-card, .entropy-panel { overflow-wrap: break-word; }
+  .post-card-inner {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .post-card-inner > div:first-child {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+  .post-card-inner > div:last-child {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+  header nav { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+  .token-counter { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+  textarea { width: 100%; box-sizing: border-box; }
+}
+
+p, span, a, li, td, th, h1, h2, h3, h4, h5, h6, blockquote, pre, code {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+a, code, pre {
+  word-break: break-word;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.post-content,
+.post-body,
+article {
+  overflow-x: hidden;
+  max-width: 100%;
+}
