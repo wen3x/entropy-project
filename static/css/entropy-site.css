@@ -497,7 +497,11 @@ html[data-site-theme="dark"] .entropy-theme-toggle .theme-icon-dark  { display: 
 .post-golden {
   border: var(--entropy-border-width) dashed #facc15 !important;
   border-top: var(--entropy-border-width) dashed #facc15 !important;
-  box-shadow: var(--entropy-shadow), 0 0 0 1px rgba(250, 204, 21, 0.15);
+  box-shadow: 3px 3px 0 0 #e6b422, 0 0 0 1px rgba(250, 204, 21, 0.15);
+}
+
+html[data-site-theme="dark"] .post-golden {
+  box-shadow: 3px 3px 0 0 #facc15, 0 0 0 1px rgba(250, 204, 21, 0.15);
 }
 
 .post-pinned {
@@ -505,7 +509,7 @@ html[data-site-theme="dark"] .entropy-theme-toggle .theme-icon-dark  { display: 
   border-color: var(--entropy-border);
 }
 
-/* ── DonationAlerts (unchanged, kept as-is) ── */
+/* ── DonationAlerts (neobrutalist 3D block style) ── */
 .da-btn {
   display: block;
   text-align: center;
@@ -514,30 +518,44 @@ html[data-site-theme="dark"] .entropy-theme-toggle .theme-icon-dark  { display: 
   font-weight: 600;
   color: #000;
   background: linear-gradient(135deg, #ff8c00 0%, #ff6a00 50%, #ff4500 100%);
-  border: 1px solid #ff8c00;
+  border: var(--entropy-border-width) solid #cc5500;
   min-height: 2.75rem;
   border-radius: 0;
-  transition: box-shadow 0.25s ease, transform 0.2s ease, filter 0.2s ease;
+  box-shadow: 3px 3px 0 0 #cc5500;
+  transition: box-shadow 0.15s ease, transform 0.1s ease, filter 0.2s ease;
 }
 
 .da-btn:hover {
   color: #000;
   filter: brightness(1.08);
-  transform: translateY(-1px);
-  box-shadow: 0 0 18px rgba(255, 106, 0, 0.75), 0 0 36px rgba(255, 140, 0, 0.45);
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 0 #cc5500, 0 0 18px rgba(255, 106, 0, 0.55);
+}
+
+.da-btn:active {
+  box-shadow: none;
+  transform: translate(3px, 3px);
 }
 
 /* ── Logo ── */
 .entropy-logo-img { display: block; max-height: 2.25rem; }
 #sidebar-panel .entropy-logo-img { max-height: 2rem; max-width: 9.5rem; }
 
-html[data-site-theme="dark"] .entropy-logo-img {
+html[data-site-theme="light"] .entropy-logo-img,
+html:not([data-site-theme]) .entropy-logo-img {
   filter: invert(1);
 }
 
 .countdown-pill { white-space: nowrap; }
 
 .post-card-title { word-break: break-all; }
+.post-card-title a {
+  text-decoration: none;
+}
+.post-card-title a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .post-card-inner > div:first-child { overflow: hidden; min-width: 0; }
 
 .post-card-link::after {
