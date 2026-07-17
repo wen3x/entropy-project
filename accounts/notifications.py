@@ -3,6 +3,7 @@ import json
 import logging
 from datetime import timedelta
 from functools import lru_cache
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.utils import timezone
@@ -20,7 +21,6 @@ logger = logging.getLogger(__name__)
 def _get_vapid() -> Vapid:
     """Создать Vapid instance из raw base64-ключа (32 байта) в настройках."""
     key_b64 = settings.WEBPUSH_VAPID_PRIVATE_KEY
-    # Восстанавливаем padding
     padding = 4 - len(key_b64) % 4
     if padding != 4:
         key_b64 += "=" * padding
@@ -54,6 +54,12 @@ def _send_web_push(user: User, title: str, body: str, icon: str = "", url: str =
 
     for sub in subs:
         try:
+            # Динамически определяем aud из endpoint (нужно для Google FCM)
+            parsed = urlparse(sub.endpoint)
+            claims = {
+                **settings.WEBPUSH_VAPID_CLAIMS,
+                "aud": f"{parsed.scheme}://{parsed.netloc}",
+            }
             webpush(
                 subscription_info={
                     "endpoint": sub.endpoint,
@@ -64,7 +70,7 @@ def _send_web_push(user: User, title: str, body: str, icon: str = "", url: str =
                 },
                 data=payload,
                 vapid_private_key=vapid,
-                vapid_claims=settings.WEBPUSH_VAPID_CLAIMS,
+                vapid_claims=claims,
             )
         except WebPushException as e:
             # Если подписка истекла/невалидна — удаляем её

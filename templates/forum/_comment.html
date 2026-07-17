@@ -20,9 +20,9 @@
         <button type="submit" class="entropy-btn px-2 py-1 text-xs font-semibold">Ответ</button>
       </form>
       {% endif %}
-      {% if comment._children %}
+      {% if comment.children %}
       <ul class="mt-4 ml-4 space-y-3 border-l entropy-border-muted pl-4">
-        {% for child in comment._children %}
+        {% for child in comment.children %}
           {% include "forum/_comment.html" with comment=child %}
         {% endfor %}
       </ul>

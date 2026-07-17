@@ -189,11 +189,11 @@ def _post_detail_view(request, slug, node=None):
     comment_dict = {c.pk: c for c in all_comments}
     comment_tree = []
     for c in all_comments:
-        c._children = []
+        c.children = []
         if c.parent_id is None:
             comment_tree.append(c)
         elif c.parent_id in comment_dict:
-            comment_dict[c.parent_id]._children.append(c)
+            comment_dict[c.parent_id].children.append(c)
 
     liked_post = False
     liked_comment_ids = set()
