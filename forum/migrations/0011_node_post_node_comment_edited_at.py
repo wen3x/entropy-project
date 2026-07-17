@@ -6,8 +6,8 @@ def create_global_node(apps, schema_editor):
     Node = apps.get_model("forum", "Node")
     global_node = Node.objects.create(
         slug="global",
-        name="Global",
-        description="Все посты, созданные до введения Узлов.",
+        name="Глобальный",
+        description="Посты без определенной темы",
     )
     Post = apps.get_model("forum", "Post")
     Post.objects.all().update(node=global_node)

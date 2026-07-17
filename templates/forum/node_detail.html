@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load profile_tags %}
 
-{% block title %}/n/{{ node.slug }} — {{ node.name }} — Entropy{% endblock %}
+{% block title %}{{ node.name }} — /n/{{ node.slug }} — Entropy{% endblock %}
 
 {% block seo_meta %}
 <meta name="description" content="Узел {{ node.name }} — посты по теме: {{ node.description|truncatechars:160 }}">
@@ -14,8 +14,8 @@
       <a href="{% url 'forum:node_list' %}" class="hover:underline">Узлы</a>
       &middot; {{ node.created_at|date:"d.m.Y" }}
     </p>
-    <h1 class="mt-2 text-3xl font-extrabold uppercase tracking-tight">/n/{{ node.slug }}</h1>
-    <p class="mt-2 text-lg">{{ node.name }}</p>
+    <h1 class="mt-2 text-3xl font-extrabold uppercase tracking-tight">{{ node.name }}</h1>
+    <p class="mt-2 text-sm entropy-text-muted">/n/{{ node.slug }}</p>
     {% if node.description %}
       <p class="mt-2 text-sm entropy-text-muted">{{ node.description }}</p>
     {% endif %}

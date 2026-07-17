@@ -20,7 +20,7 @@
         <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {% for node in node_results %}
             <a href="{% url 'forum:node_detail' node.slug %}" class="entropy-card p-4 block hover:opacity-80 transition-opacity">
-              <p class="font-bold">/n/{{ node.slug }}</p>
+              <p class="font-bold">{{ node.name }}</p>
               <p class="text-sm entropy-text-muted">{{ node.name }}</p>
             </a>
           {% endfor %}
@@ -38,7 +38,7 @@
             <article class="entropy-card p-4">
               <p class="text-xs entropy-text-faint">
                 {% if post.node %}
-                  <a href="{% url 'forum:node_detail' post.node.slug %}" class="hover:underline font-semibold">/n/{{ post.node.slug }}</a>
+                  <a href="{% url 'forum:node_detail' post.node.slug %}" class="hover:underline font-semibold">{{ post.node.name }}</a>
                   &middot;
                 {% endif %}
                 <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ post.author.username }}</a>

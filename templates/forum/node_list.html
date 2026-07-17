@@ -20,17 +20,30 @@
 
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {% for node in nodes %}
-      <a href="{% url 'forum:node_detail' node.slug %}" class="entropy-card p-6 block hover:opacity-80 transition-opacity">
-        <h2 class="text-lg font-extrabold uppercase tracking-tight">/n/{{ node.slug }}</h2>
-        <p class="mt-2 text-sm entropy-text-muted">{{ node.name }}</p>
-        {% if node.description %}
-          <p class="mt-2 text-xs entropy-text-faint">{{ node.description|truncatechars:80 }}</p>
-        {% endif %}
-        <div class="mt-4 flex gap-4 text-xs entropy-text-faint">
-          <span>📄 {{ node.post_count }} постов</span>
-          <span>❤️ {{ node.like_count }} лайков</span>
+      {% if node.slug == "global" %}
+        <div class="entropy-card p-6 block cursor-default">
+          <h2 class="text-lg font-extrabold uppercase tracking-tight">{{ node.name }}</h2>
+          {% if node.description %}
+            <p class="mt-2 text-xs entropy-text-faint">{{ node.description|truncatechars:80 }}</p>
+          {% endif %}
+          <div class="mt-4 flex gap-4 text-xs entropy-text-faint">
+            <span>📄 {{ node.post_count }} постов</span>
+            <span>❤️ {{ node.like_count }} лайков</span>
+          </div>
         </div>
-      </a>
+      {% else %}
+        <a href="{% url 'forum:node_detail' node.slug %}" class="entropy-card p-6 block hover:opacity-80 transition-opacity">
+          <h2 class="text-lg font-extrabold uppercase tracking-tight">{{ node.name }}</h2>
+          <p class="mt-2 text-sm entropy-text-muted">/n/{{ node.slug }}</p>
+          {% if node.description %}
+            <p class="mt-2 text-xs entropy-text-faint">{{ node.description|truncatechars:80 }}</p>
+          {% endif %}
+          <div class="mt-4 flex gap-4 text-xs entropy-text-faint">
+            <span>📄 {{ node.post_count }} постов</span>
+            <span>❤️ {{ node.like_count }} лайков</span>
+          </div>
+        </a>
+      {% endif %}
     {% endfor %}
   </div>
 
