@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% if user.is_authenticated %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
+
+  <title>{% block title %}Entropy — форум с энтропией{% endblock %}</title>
+
+  {% block seo_meta %}
+  <meta name="description" content="Entropy — форум с энтропией. Посты живут ограниченное время и исчезают без взаимодействия. Лайки продлевают жизнь, золотые посты бессмертны.">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Entropy">
+  <meta property="og:title" content="Entropy — форум с энтропией">
+  <meta property="og:description" content="Форум, где посты умирают. Лайки продлевают жизнь, комментарии дают часы. Золотые посты бессмертны. Зарабатывай токены и украшай профиль.">
+  <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Entropy — форум с энтропией">
+  <meta name="twitter:description" content="Форум, где посты умирают. Лайки продлевают жизнь.">
+  {% endblock %}
+
+  {% load static %}
+  <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+  <script>
+  (function () {
+    var k = "entropy-site-theme", s = localStorage.getItem(k);
+    if (s === "light" || s === "dark") {
+      document.documentElement.setAttribute("data-site-theme", s);
+    } else {
+      document.documentElement.setAttribute("data-site-theme",
+        window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    }
+  })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"] },
+          borderRadius: { none: "0", DEFAULT: "0", sm: "0", md: "0", lg: "0", xl: "0", "2xl": "0", "3xl": "0", full: "0" }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/entropy-site.css' %}">
+</head>
+<body class="min-h-full antialiased">
+
+  <header class="entropy-header sticky top-0 z-40">
+    <nav class="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4">
+      <div class="flex min-w-0 items-center gap-2 sm:gap-4">
+        {% if user.is_authenticated %}
+        <button type="button" id="menu-toggle"
+          class="entropy-btn flex h-11 w-11 shrink-0 items-center justify-center p-0"
+          aria-label="Открыть меню">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"/>
+          </svg>
+        </button>
+        {% endif %}
+        {% include "includes/logo.html" %}
+      </div>
+
+      <div class="flex shrink-0 items-center gap-2 text-sm sm:gap-3">
+        <button type="button" id="site-theme-toggle" class="entropy-theme-toggle" aria-label="Переключить тему сайта">
+          <svg class="theme-icon-light h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+          <svg class="theme-icon-dark h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+        </button>
+        {% if user.is_authenticated %}
+          <span class="token-counter px-2 py-1 text-sm font-semibold tabular-nums sm:px-3">
+            <span class="hidden sm:inline">{{ user.tokens }} ток.</span>
+            <span class="sm:hidden">{{ user.tokens }}</span>
+          </span>
+          <a href="{% url 'notifications_list' %}"
+             class="entropy-icon-btn relative flex h-11 w-11 shrink-0 items-center justify-center"
+             aria-label="Уведомления">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-width="2" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            {% if unread_notifications %}
+              <span class="notif-badge absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center px-1 text-[10px] font-bold">{{ unread_notifications }}</span>
+            {% endif %}
+          </a>
+          <a href="{% url 'profile_detail' user.username %}" class="font-semibold hover:underline">Профиль</a>
+        {% else %}
+          <a href="{% url 'login' %}" class="font-semibold hover:underline">Вход</a>
+          <a href="{% url 'register' %}" class="entropy-btn-primary px-3 py-1.5 text-sm font-semibold">Регистрация</a>
+        {% endif %}
+      </div>
+    </nav>
+  </header>
+
+  {% if user.is_authenticated %}
+  <div id="sidebar-overlay" class="pointer-events-none fixed inset-0 z-50 opacity-0" style="background:var(--entropy-overlay)" aria-hidden="true"></div>
+  <aside id="sidebar-panel" class="fixed left-0 top-0 z-50 flex h-full w-72 -translate-x-full flex-col border-r">
+    <div class="flex items-center justify-between border-b entropy-border px-4 py-4">
+      {% include "includes/logo.html" %}
+      <button type="button" id="menu-close" class="entropy-btn h-11 w-11 shrink-0 p-0 text-lg leading-none" aria-label="Закрыть">&times;</button>
+    </div>
+    <nav class="flex flex-1 flex-col gap-2 p-4">
+      <a href="{% url 'forum:post_create' %}"    class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Новый пост</a>
+      <a href="{% url 'forum:graveyard_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Кладбище</a>
+      <a href="{% url 'shop' %}"                 class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Магазин</a>
+      <a href="{% url 'streaks' %}"              class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Система стриков</a>
+      <a href="{{ donation_alerts_url }}" target="_blank" rel="noopener noreferrer" class="da-btn">DonationAlerts</a>
+      {% if is_god %}
+      <a href="{% url 'secret_panel' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Секретная панель</a>
+      {% endif %}
+      <form action="{% url 'logout' %}" method="post" class="mt-auto">
+        {% csrf_token %}
+        <button type="submit" class="entropy-btn w-full px-4 py-3 text-sm font-semibold">Выйти</button>
+      </form>
+    </nav>
+  </aside>
+  {% endif %}
+
+  <main class="mx-auto max-w-5xl px-4 py-8">
+    {% if messages %}
+      <ul class="mb-6 space-y-2">
+        {% for message in messages %}
+          <li class="entropy-message px-4 py-2 text-sm font-medium {% if 'error' not in message.tags and 'success' not in message.tags %}entropy-message--muted{% endif %}">
+            {{ message }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="entropy-footer py-8 text-center text-xs">
+    <span class="entropy-text-faint">Entropy &middot; контент умирает по таймеру</span>
+  </footer>
+
+  <script src="{% static 'js/entropy-theme.js' %}"></script>
+  <script>
+  (function () {
+    var toggle  = document.getElementById('menu-toggle');
+    var closeBtn = document.getElementById('menu-close');
+    var overlay = document.getElementById('sidebar-overlay');
+    var panel   = document.getElementById('sidebar-panel');
+    if (!toggle || !panel) return;
+    function openMenu() {
+      overlay.classList.remove('pointer-events-none', 'opacity-0');
+      overlay.classList.add('opacity-100');
+      panel.classList.remove('-translate-x-full');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeMenu() {
+      overlay.classList.add('pointer-events-none', 'opacity-0');
+      overlay.classList.remove('opacity-100');
+      panel.classList.add('-translate-x-full');
+      document.body.style.overflow = '';
+    }
+    toggle.addEventListener('click', openMenu);
+    if (closeBtn) closeBtn.addEventListener('click', closeMenu);
+    overlay.addEventListener('click', closeMenu);
+  })();
+  </script>
+  {% if user.is_authenticated %}
+  <script src="{% static 'js/entropy-likes.js' %}"></script>
+  {% endif %}
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load profile_tags %}
+
+{% block title %}Активные посты — Entropy{% endblock %}
+
+{% block seo_meta %}
+<meta name="description" content="Активные посты форума Entropy. Посты живут ограниченное время — лайки продлевают жизнь, комментарии добавляют часы. Золотые посты бессмертны.">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Entropy">
+<meta property="og:title" content="Активные посты — Entropy">
+<meta property="og:description" content="Форум с энтропией: посты умирают без взаимодействия. Лайки продлевают жизнь постам, комментарии дают +12 часов.">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Активные посты — Entropy">
+<meta name="twitter:description" content="Форум, где посты умирают. Лайки продлевают жизнь.">
+{% endblock %}
+
+{% block content %}
+  <div class="mb-8 border-b entropy-border pb-6">
+    <h1 class="text-3xl font-extrabold uppercase tracking-tight">Активные посты</h1>
+    <p class="mt-2 text-sm entropy-text-muted">Только живые темы с неистёкшим сроком.</p>
+  </div>
+
+  {% if not posts %}
+    <p class="border entropy-border-muted px-6 py-12 text-center entropy-text-faint">
+      Нет активных постов.{% if user.is_authenticated %} Создайте новый - в меню «Новый пост».{% endif %}
+    </p>
+  {% endif %}
+
+  <div class="space-y-4">
+    {% for post in posts %}
+      <article class="entropy-card post-card p-4 sm:p-6 {% if post.is_golden %}post-golden{% elif post.is_pinned %}post-pinned{% endif %}" data-expires="{{ post.expires_at.isoformat }}" style="position:relative;">
+        <div class="flex flex-col gap-3 post-card-inner sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+          <div class="min-w-0 flex-1" style="overflow:hidden;min-width:0;">
+            <p class="text-xs entropy-text-faint">
+              <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ post.author.username }}</a>
+              {% if post.is_golden %}
+                <span class="ml-2 border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-yellow-500">Золотой</span>
+              {% elif post.is_pinned %}
+                <span class="ml-2 border entropy-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest">Закреплён</span>
+              {% endif %}
+              &middot; {{ post.created_at|date:"d.m.Y H:i" }}
+            </p>
+            <h2 class="mt-2 text-xl font-bold post-card-title" style="overflow:hidden;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">
+              <a href="{{ post.get_absolute_url }}" class="post-card-link underline">{{ post.title }}</a>
+            </h2>
+            <p class="mt-3 text-sm entropy-text-soft post-card-content" style="word-break:break-all;">{{ post.content|truncatechars:100 }}</p>
+          </div>
+          <div class="flex shrink-0 flex-row flex-wrap items-center gap-2 text-sm sm:flex-col sm:items-end sm:text-right">
+            <div class="countdown-pill border entropy-border px-3 py-1 text-xs font-bold uppercase tracking-wide" data-role="expire-pill">
+              <span class="entropy-text-muted">Осталось: </span>
+              <span class="countdown tabular-nums" data-expires="{{ post.expires_at.isoformat }}">…</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 entropy-text-muted sm:justify-end">
+              <span>&#9829; <span data-like-count-for="post-{{ post.slug }}">{{ post.like_count }}</span></span>
+              {% if user.is_authenticated %}
+                <button
+                  type="button"
+                  class="entropy-btn px-2 py-0.5 text-xs font-semibold"
+                  data-like-url="{% url 'forum:toggle_like_post' post.slug %}"
+                  data-like-id="post-{{ post.slug }}"
+                  data-liked="{% if post.slug in liked_slugs %}true{% else %}false{% endif %}"
+                  data-like-label="+ лайк"
+                  data-unlike-label="− лайк"
+                  aria-pressed="{% if post.slug in liked_slugs %}true{% else %}false{% endif %}"
+                >{% if post.slug in liked_slugs %}− лайк{% else %}+ лайк{% endif %}</button>
+              {% endif %}
+              {% if is_god %}
+                <form action="{% url 'forum:toggle_pin_post' post.slug %}" method="post" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="entropy-btn px-2 py-0.5 text-[10px] font-semibold">
+                    {% if post.is_pinned %}Открепить{% else %}Закрепить{% endif %}
+                  </button>
+                </form>
+                <form action="{% url 'forum:post_delete' post.slug %}" method="post" class="inline"
+                      onsubmit="return confirm('Отправить пост «{{ post.title|escapejs }}» в Кладбище?');">
+                  {% csrf_token %}
+                  <button type="submit" class="entropy-btn-invert px-2 py-0.5 text-[10px]">Удалить</button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Активные посты — Entropy",
+  "description": "Активные публикации форума с энтропией. Посты живут ограниченное время.",
+  "url": "{{ request.scheme }}://{{ request.get_host }}/",
+  "itemListElement": [
+    {% for post in posts %}
+    {
+      "@type": "ListItem",
+      "position": {{ forloop.counter }},
+      "item": {
+        "@type": "DiscussionForumPosting",
+        "headline": "{{ post.title|escapejs }}",
+        "author": { "@type": "Person", "name": "{{ post.author.username|escapejs }}" },
+        "datePublished": "{{ post.created_at|date:'c' }}",
+        "url": "{{ request.scheme }}://{{ request.get_host }}{{ post.get_absolute_url }}",
+        "interactionStatistic": {
+          "@type": "InteractionCounter",
+          "interactionType": "https://schema.org/LikeAction",
+          "userInteractionCount": {{ post.like_count }}
+        }
+      }
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+<script>
+(function () {
+  var H3 = 3 * 3600000, H1 = 3600000;
+  function formatRemaining(ms) {
+    if (ms <= 0) return "истекло";
+    var s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
+    var m = Math.floor((s % 3600) / 60), sec = s % 60, parts = [];
+    if (d) parts.push(d + "д");
+    if (h || d) parts.push(h + "ч");
+    parts.push(m + "м " + sec + "с");
+    return parts.join(" ");
+  }
+  function applyDeathEffect(card, rem) {
+    var inner = card.querySelector(".post-card-inner");
+    var title = card.querySelector(".post-card-title");
+    var content = card.querySelector(".post-card-content");
+    [inner, title, content].forEach(function (el) {
+      if (!el) return;
+      el.classList.remove("post-dying-shake", "post-dying-blur");
+    });
+    card.classList.remove("post-dying-blur");
+    if (rem <= 0 || rem > H3) return;
+    if (rem < H1) {
+      card.classList.add("post-dying-blur");
+      if (title) title.classList.add("post-dying-shake", "post-dying-blur");
+      if (content) content.classList.add("post-dying-shake", "post-dying-blur");
+    } else {
+      if (title) title.classList.add("post-dying-shake");
+      if (content) content.classList.add("post-dying-shake");
+    }
+  }
+  function tick() {
+    var now = Date.now();
+    document.querySelectorAll(".countdown").forEach(function (el) {
+      var end = new Date(el.getAttribute("data-expires")).getTime();
+      var rem = end - now;
+      el.textContent = formatRemaining(rem);
+    });
+    document.querySelectorAll(".post-card").forEach(function (card) {
+      var end = new Date(card.getAttribute("data-expires")).getTime();
+      applyDeathEffect(card, end - now);
+    });
+  }
+  tick(); setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Новый пост{% endblock %}
+
+{% block content %}
+  <div class="entropy-card mx-auto max-w-2xl p-8">
+    <h1 class="text-2xl font-extrabold uppercase tracking-tight">Новый пост</h1>
+    <p class="mt-2 text-sm entropy-text-muted">
+      {% if has_free_post %}
+        Следующий пост <span class="font-bold entropy-text-emphasis">бесплатный</span> (стрик, день 7).
+      {% else %}
+        Стоимость: <span class="font-bold entropy-text-emphasis">{{ post_cost }} токенов</span>.
+      {% endif %}
+      Публикация продлевает срок жизни аккаунта на 7 дней.
+    </p>
+
+    <form method="post" class="mt-8 space-y-6">
+      {% csrf_token %}
+      {% for field in form %}
+        <div>
+          <div class="flex items-baseline justify-between">
+            <label for="{{ field.id_for_label }}" class="block text-sm font-semibold entropy-text-soft">{{ field.label }}</label>
+            {% if field.html_name == 'title' %}
+              <span class="text-xs entropy-text-subtle" id="title-counter">0&nbsp;/&nbsp;50</span>
+            {% endif %}
+          </div>
+          <div class="mt-1">{{ field }}</div>
+          {% if field.errors %}<p class="mt-1 text-sm font-medium entropy-text-soft">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+      {% endfor %}
+      <div class="flex gap-3">
+        <button type="submit" class="entropy-btn-primary px-5 py-2.5 text-sm font-semibold">Опубликовать</button>
+        <a href="{% url 'forum:post_list' %}" class="entropy-btn px-5 py-2.5 text-sm font-semibold">Отмена</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function() {
+    var input = document.getElementById('id_title');
+    var counter = document.getElementById('title-counter');
+    if (!input || !counter) return;
+    function update() {
+      var len = input.value.length;
+      counter.textContent = len + '\u00a0/\u00a050';
+      if (len >= 50) { counter.style.color = '#ef4444'; }
+      else if (len >= 45) { counter.style.color = '#facc15'; }
+      else { counter.style.color = ''; }
+    }
+    input.addEventListener('input', update);
+    update();
+  })();
+</script>
+{% endblock %}

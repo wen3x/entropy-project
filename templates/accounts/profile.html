@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_own_profile %}Мой профиль{% else %}{{ profile_user.username }}{% endif %}{% endblock %}
+
+{% block content %}
+  <div class="space-y-8">
+    {% if profile_theme_id == 'default' %}
+    <div class="entropy-card p-8">
+      <div class="flex flex-wrap items-start justify-between gap-4 pb-6 border-b entropy-border">
+        <div>
+          <h1 class="text-2xl font-extrabold uppercase tracking-tight">{% if is_own_profile %}Мой профиль{% else %}{{ profile_user.username }}{% endif %}</h1>
+          <p class="mt-1 text-sm font-medium entropy-text-faint">{% if is_own_profile %}Ваш аккаунт{% else %}Публичная статистика{% endif %}</p>
+        </div>
+        {% if is_own_profile %}
+        <div class="flex items-center gap-3 border entropy-border px-4 py-3">
+          <span class="text-3xl">&#128293;</span>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">Стрик</p>
+            <p class="text-2xl font-extrabold tabular-nums">{{ profile_user.login_streak }} <span class="text-sm font-medium entropy-text-faint">дн.</span></p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if is_own_profile and profile_user.has_free_post %}
+        <p class="mt-4 border entropy-border px-4 py-2 text-sm font-medium">Доступен один бесплатный пост (награда стрика или квеста).</p>
+      {% endif %}
+
+      {% if is_own_profile and streak_reward %}
+        <p class="mt-4 border entropy-border-muted px-4 py-2 text-sm font-medium entropy-text-muted">
+          Сегодня: день {{ streak_reward.streak_day }} стрика
+          {% if streak_reward.tokens_reward %} - +{{ streak_reward.tokens_reward }} токенов{% endif %}
+        </p>
+      {% endif %}
+
+      <dl class="mt-8 grid gap-4 sm:grid-cols-2">
+        <div class="border entropy-border-muted p-4">
+          <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Имя</dt>
+          <dd class="mt-1 text-lg font-extrabold">{{ profile_user.username }}</dd>
+        </div>
+        {% if is_own_profile %}
+        <div class="border entropy-border-muted p-4">
+          <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Почта</dt>
+          <dd class="mt-1 text-lg font-bold">{% if profile_user.email %}{{ profile_user.email }}{% else %}-{% endif %}</dd>
+        </div>
+        {% endif %}
+        <div class="border entropy-border p-4 sm:col-span-2">
+          <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Токены</dt>
+          <dd class="mt-1 text-3xl font-extrabold tabular-nums">{{ profile_user.tokens }}</dd>
+        </div>
+        <div class="border entropy-border-muted p-4">
+          <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Всего постов</dt>
+          <dd class="mt-1 text-lg font-bold">{{ post_count }}</dd>
+        </div>
+        <div class="border entropy-border-muted p-4">
+          <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Активных постов</dt>
+          <dd class="mt-1 text-lg font-bold">{{ active_posts }}</dd>
+        </div>
+        {% if is_own_profile %}
+        <div class="border entropy-border-muted p-4 sm:col-span-2">
+          <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Срок жизни аккаунта до</dt>
+          <dd class="mt-1 font-semibold">{{ profile_user.vitality_expires_at|date:"d.m.Y H:i" }}</dd>
+        </div>
+        <div class="border entropy-border-muted p-4 sm:col-span-2">
+          <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Регистрация</dt>
+          <dd class="mt-1 font-semibold">{{ profile_user.date_joined|date:"d.m.Y H:i" }}</dd>
+        </div>
+        {% endif %}
+      </dl>
+
+      {% if is_own_profile %}
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="{% url 'streaks' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold">Система стриков</a>
+        <a href="{% url 'shop' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold">Магазин тем</a>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="profile-card entropy-card p-8"
+         style="--profile-fg: {{ profile_theme.fg }};
+                --profile-on-accent: {{ profile_theme.on_accent }};
+                --profile-shadow: 4px 4px 0 0 {{ profile_theme.fg }};
+                --profile-shadow-sm: 2px 2px 0 0 {{ profile_theme.fg }};
+                border-color: {{ profile_theme.fg }} !important;">
+      <div class="flex flex-wrap items-start justify-between gap-4 pb-6 border-b" style="border-color: {{ profile_theme.fg }}">
+        <div>
+          <h1 class="text-2xl font-extrabold uppercase tracking-tight" style="color: {{ profile_theme.fg }}; {% if profile_theme.glow %}text-shadow: {{ profile_theme.glow }};{% endif %}">
+            {% if is_own_profile %}Мой профиль{% else %}{{ profile_user.username }}{% endif %}
+          </h1>
+          <p class="mt-1 text-sm font-medium" style="color: {{ profile_theme.fg_faint }}">{% if is_own_profile %}Ваш аккаунт{% else %}Публичная статистика{% endif %}</p>
+          {% if profile_theme_id != 'default' %}
+            <p class="profile-theme-label mt-3 text-xs uppercase" style="color: {{ profile_theme.fg_muted }}">
+              {% if profile_theme_id == 'red' %}● Красная тема
+              {% elif profile_theme_id == 'blue' %}● Синяя тема
+              {% elif profile_theme_id == 'green' %}● Зелёная тема
+              {% elif profile_theme_id == 'gold' %}● Золотая тема
+              {% endif %}
+            </p>
+          {% endif %}
+        </div>
+        {% if is_own_profile %}
+        <div class="profile-streak-box flex items-center gap-3 px-4 py-3" style="border-color: {{ profile_theme.fg }}">
+          <span class="text-3xl">&#128293;</span>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-widest" style="color: {{ profile_theme.fg_faint }}">Стрик</p>
+            <p class="text-2xl font-extrabold tabular-nums" style="color: {{ profile_theme.fg }}">{{ profile_user.login_streak }} <span class="text-sm font-medium" style="color: {{ profile_theme.fg_faint }}">дн.</span></p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if is_own_profile and profile_user.has_free_post %}
+        <p class="mt-4 profile-stat border px-4 py-2 text-sm font-medium" style="border-color: {{ profile_theme.fg }}">Доступен один бесплатный пост (награда стрика или квеста).</p>
+      {% endif %}
+
+      {% if is_own_profile and streak_reward %}
+        <p class="mt-4 profile-stat border px-4 py-2 text-sm font-medium" style="border-color: {{ profile_theme.fg_muted }}; color: {{ profile_theme.fg_muted }}">
+          Сегодня: день {{ streak_reward.streak_day }} стрика
+          {% if streak_reward.tokens_reward %} - +{{ streak_reward.tokens_reward }} токенов{% endif %}
+        </p>
+      {% endif %}
+
+      <dl class="mt-8 grid gap-4 sm:grid-cols-2">
+        <div class="profile-stat border p-4" style="border-color: {{ profile_theme.fg_faint }}">
+          <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Имя</dt>
+          <dd class="mt-1 text-lg font-extrabold" style="color: {{ profile_theme.fg }}; {% if profile_theme.glow %}text-shadow: {{ profile_theme.glow }};{% endif %}">{{ profile_user.username }}</dd>
+        </div>
+        {% if is_own_profile %}
+        <div class="profile-stat border p-4" style="border-color: {{ profile_theme.fg_faint }}">
+          <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Почта</dt>
+          <dd class="mt-1 text-lg font-bold" style="color: {{ profile_theme.fg }}">{% if profile_user.email %}{{ profile_user.email }}{% else %}-{% endif %}</dd>
+        </div>
+        {% endif %}
+        <div class="profile-stat border p-4 sm:col-span-2" style="border-color: {{ profile_theme.fg }}">
+          <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Токены</dt>
+          <dd class="mt-1 text-3xl font-extrabold tabular-nums" style="color: {{ profile_theme.fg }}">{{ profile_user.tokens }}</dd>
+        </div>
+        <div class="profile-stat border p-4" style="border-color: {{ profile_theme.fg_faint }}">
+          <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Всего постов</dt>
+          <dd class="mt-1 text-lg font-bold" style="color: {{ profile_theme.fg }}">{{ post_count }}</dd>
+        </div>
+        <div class="profile-stat border p-4" style="border-color: {{ profile_theme.fg_faint }}">
+          <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Активных постов</dt>
+          <dd class="mt-1 text-lg font-bold" style="color: {{ profile_theme.fg }}">{{ active_posts }}</dd>
+        </div>
+        {% if is_own_profile %}
+        <div class="profile-stat border p-4 sm:col-span-2" style="border-color: {{ profile_theme.fg_faint }}">
+          <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Срок жизни аккаунта до</dt>
+          <dd class="mt-1 font-semibold" style="color: {{ profile_theme.fg }}">{{ profile_user.vitality_expires_at|date:"d.m.Y H:i" }}</dd>
+        </div>
+        <div class="profile-stat border p-4 sm:col-span-2" style="border-color: {{ profile_theme.fg_faint }}">
+          <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Регистрация</dt>
+          <dd class="mt-1 font-semibold" style="color: {{ profile_theme.fg }}">{{ profile_user.date_joined|date:"d.m.Y H:i" }}</dd>
+        </div>
+        {% endif %}
+      </dl>
+
+      {% if is_own_profile %}
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="{% url 'streaks' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Система стриков</a>
+        <a href="{% url 'shop' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Магазин тем</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if is_own_profile and quest_items %}
+      {% include "includes/quests_panel.html" %}
+    {% endif %}
+
+    {% if user_posts %}
+    <section class="entropy-card p-8">
+      <h2 class="text-xl font-extrabold uppercase tracking-tight">Живые посты</h2>
+      <ul class="mt-4 divide-y entropy-divide border entropy-border">
+        {% for p in user_posts %}
+          <li class="px-4 py-3 text-sm"><span class="font-medium">{{ p.title }}</span> <span class="entropy-text-subtle">· до {{ p.expires_at|date:"d.m H:i" }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <a href="{% url 'forum:post_list' %}" class="text-sm font-semibold hover:underline">&larr; На главную</a>
+  </div>
+{% endblock %}

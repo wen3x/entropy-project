@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Готово{% endblock %}
+
+{% block content %}
+  <div class="entropy-card mx-auto max-w-md p-8 text-center">
+    <h1 class="text-2xl font-extrabold uppercase tracking-tight">Аккаунт создан</h1>
+    <p class="mt-4 text-sm entropy-text-muted">
+      Пользователь <span class="font-bold entropy-text-emphasis">{{ username }}</span> зарегистрирован. На счёт зачислено 50 токенов.
+    </p>
+    <a href="{% url 'login' %}" class="entropy-btn-primary mt-6 inline-block px-5 py-2.5 text-sm font-semibold">Войти</a>
+  </div>
+{% endblock %}

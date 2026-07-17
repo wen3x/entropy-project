@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  {# Главная страница #}
+  <url>
+    <loc>{{ base_url }}/</loc>
+    <changefreq>hourly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  {# Активные посты #}
+  {% for post in posts %}
+  <url>
+    <loc>{{ base_url }}/p/{{ post.slug }}/</loc>
+    <lastmod>{{ post.created_at|date:"Y-m-d" }}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  {% endfor %}
+
+</urlset>
