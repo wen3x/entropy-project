@@ -107,6 +107,8 @@
       <button type="button" id="menu-close" class="entropy-btn h-11 w-11 shrink-0 p-0 text-lg leading-none" aria-label="Закрыть">&times;</button>
     </div>
     <nav class="flex flex-1 flex-col gap-2 p-4">
+      <a href="{% url 'forum:search' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">🔍 Поиск</a>
+      <a href="{% url 'forum:node_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">☰ Узлы</a>
       <a href="{% url 'forum:post_create' %}"    class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Новый пост</a>
       <a href="{% url 'forum:graveyard_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Кладбище</a>
       <a href="{% url 'shop' %}"                 class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Магазин</a>

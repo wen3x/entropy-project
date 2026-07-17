@@ -22,7 +22,38 @@ def default_comment_expires():
     return timezone.now() + timedelta(hours=24)
 
 
+class Node(models.Model):
+    slug = models.SlugField(max_length=32, unique=True, db_index=True)
+    name = models.CharField(max_length=64)
+    description = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_nodes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ("name",)
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse("forum:node_detail", args=[self.slug])
+
+
 class Post(models.Model):
+    node = models.ForeignKey(
+        Node,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="posts",
+    )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -52,6 +83,8 @@ class Post(models.Model):
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
+        if self.node_id:
+            return reverse("forum:post_detail_in_node", args=[self.node.slug, self.slug])
         return reverse("forum:post_detail", args=[self.slug])
 
 
@@ -71,6 +104,7 @@ class Comment(models.Model):
     )
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField(default=default_comment_expires)
     is_active = models.BooleanField(default=True, db_index=True)
     is_approved = models.BooleanField(default=False)
@@ -79,17 +113,14 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ("created_at",)
-        constraints = [
-            models.UniqueConstraint(
-                fields=("post", "author"),
-                condition=models.Q(parent__isnull=True),
-                name="uniq_top_level_comment_per_user_post",
-            )
-        ]
 
     @property
     def is_reply(self):
         return self.parent_id is not None
+
+    @property
+    def is_edited(self):
+        return self.edited_at is not None
 
 
 class Like(models.Model):

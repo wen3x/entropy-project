@@ -598,8 +598,8 @@ html:not([data-site-theme]) .entropy-logo-img {
 }
 
 .profile-btn:hover {
-  background: var(--profile-fg);
-  color: var(--profile-on-accent, #000);
+  background: var(--entropy-accent-block);
+  color: var(--entropy-on-accent);
 }
 
 .profile-btn:active {

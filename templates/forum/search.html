@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load profile_tags %}
+
+{% block title %}{% if q %}Поиск «{{ q }}»{% else %}Поиск{% endif %} — Entropy{% endblock %}
+
+{% block content %}
+  <div class="mb-8 border-b entropy-border pb-6">
+    <h1 class="text-3xl font-extrabold uppercase tracking-tight">Поиск</h1>
+    <form method="get" action="{% url 'forum:search' %}" class="mt-4 flex gap-2">
+      <input type="text" name="q" value="{{ q }}" placeholder="Поиск узлов и постов…"
+             class="entropy-input flex-1" autofocus>
+      <button type="submit" class="entropy-btn-primary px-5 py-2 text-sm font-semibold">Найти</button>
+    </form>
+  </div>
+
+  {% if q %}
+    <section class="mb-8">
+      <h2 class="text-lg font-extrabold uppercase tracking-tight border-b entropy-border pb-2">Узлы</h2>
+      {% if node_results %}
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {% for node in node_results %}
+            <a href="{% url 'forum:node_detail' node.slug %}" class="entropy-card p-4 block hover:opacity-80 transition-opacity">
+              <p class="font-bold">/n/{{ node.slug }}</p>
+              <p class="text-sm entropy-text-muted">{{ node.name }}</p>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="mt-4 text-sm entropy-text-faint">Узлы не найдены.</p>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2 class="text-lg font-extrabold uppercase tracking-tight border-b entropy-border pb-2">Посты</h2>
+      {% if post_results %}
+        <div class="mt-4 space-y-3">
+          {% for post in post_results %}
+            <article class="entropy-card p-4">
+              <p class="text-xs entropy-text-faint">
+                {% if post.node %}
+                  <a href="{% url 'forum:node_detail' post.node.slug %}" class="hover:underline font-semibold">/n/{{ post.node.slug }}</a>
+                  &middot;
+                {% endif %}
+                <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ post.author.username }}</a>
+                &middot; {{ post.created_at|date:"d.m.Y H:i" }}
+              </p>
+              <h3 class="mt-1 font-bold">
+                <a href="{% if post.node %}{% url 'forum:post_detail_in_node' post.node.slug post.slug %}{% else %}{% url 'forum:post_detail' post.slug %}{% endif %}" class="hover:underline">{{ post.title }}</a>
+              </h3>
+              <p class="mt-1 text-sm entropy-text-soft">{{ post.content|truncatechars:120 }}</p>
+              <p class="mt-1 text-xs entropy-text-faint">❤️ {{ post.like_count }}</p>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="mt-4 text-sm entropy-text-faint">Посты не найдены.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

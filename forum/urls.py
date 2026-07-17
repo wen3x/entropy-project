@@ -14,6 +14,16 @@ urlpatterns = [
     path("p/<slug:slug>/destroy/", views.post_destroy, name="post_destroy"),
     path("p/<slug:slug>/like/", views.toggle_like_post, name="toggle_like_post"),
     path("p/<slug:slug>/pin/", views.toggle_pin_post, name="toggle_pin_post"),
+    # Nodes
+    path("nodes/", views.node_list, name="node_list"),
+    path("nodes/create/", views.create_node, name="create_node"),
+    path("n/<slug:node_slug>/", views.node_detail, name="node_detail"),
+    path("n/<slug:node_slug>/<slug:post_slug>/", views.post_detail_in_node, name="post_detail_in_node"),
+    # Search
+    path("search/", views.search_view, name="search"),
+    # Comments
     path("comment/<int:pk>/like/", views.toggle_like_comment, name="toggle_like_comment"),
     path("comment/<int:pk>/approve/", views.approve_comment, name="approve_comment"),
+    path("comment/<int:pk>/delete/", views.delete_comment, name="delete_comment"),
+    path("comment/<int:pk>/edit/", views.edit_comment, name="edit_comment"),
 ]

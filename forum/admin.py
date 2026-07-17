@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Comment, Like, Post
+from .models import Comment, Like, Node, Post
 
 
 class CommentInline(admin.TabularInline):
@@ -23,6 +23,14 @@ class CommentAdmin(admin.ModelAdmin):
     list_display = ("post", "author", "parent", "is_approved", "created_at", "is_active")
     list_filter = ("is_active", "is_approved")
     search_fields = ("text",)
+
+
+@admin.register(Node)
+class NodeAdmin(admin.ModelAdmin):
+    list_display = ("slug", "name", "created_by", "created_at", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("slug", "name", "description")
+    prepopulated_fields = {"slug": ("name",)}
 
 
 @admin.register(Like)

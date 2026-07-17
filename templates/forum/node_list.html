@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load profile_tags %}
+
+{% block title %}Узлы — Entropy{% endblock %}
+
+{% block seo_meta %}
+<meta name="description" content="Все узлы форума Entropy. Выберите тему для обсуждения.">
+<meta name="robots" content="index, follow">
+{% endblock %}
+
+{% block content %}
+  <div class="mb-8 border-b entropy-border pb-6">
+    <h1 class="text-3xl font-extrabold uppercase tracking-tight">Узлы</h1>
+    <p class="mt-2 text-sm entropy-text-muted">Выберите узел для просмотра постов по теме.</p>
+  </div>
+
+  {% if not nodes %}
+    <p class="border entropy-border-muted px-6 py-12 text-center entropy-text-faint">Узлов пока нет.</p>
+  {% endif %}
+
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for node in nodes %}
+      <a href="{% url 'forum:node_detail' node.slug %}" class="entropy-card p-6 block hover:opacity-80 transition-opacity">
+        <h2 class="text-lg font-extrabold uppercase tracking-tight">/n/{{ node.slug }}</h2>
+        <p class="mt-2 text-sm entropy-text-muted">{{ node.name }}</p>
+        {% if node.description %}
+          <p class="mt-2 text-xs entropy-text-faint">{{ node.description|truncatechars:80 }}</p>
+        {% endif %}
+        <div class="mt-4 flex gap-4 text-xs entropy-text-faint">
+          <span>📄 {{ node.post_count }} постов</span>
+          <span>❤️ {{ node.like_count }} лайков</span>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+
+  {% if is_god %}
+    <div class="mt-8">
+      <a href="{% url 'forum:create_node' %}" class="entropy-btn-primary inline-block px-6 py-3 text-sm font-semibold">+ Создать узел</a>
+    </div>
+  {% endif %}
+{% endblock %}

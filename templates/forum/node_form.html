@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Создать узел{% endblock %}
+
+{% block content %}
+  <div class="entropy-card mx-auto max-w-lg p-8">
+    <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">Только wen3x</p>
+    <h1 class="mt-2 text-2xl font-extrabold uppercase tracking-tight">Создать узел</h1>
+    <p class="mt-2 text-sm entropy-text-muted">Узел — тематический раздел, как subreddit. URL: /n/&lt;slug&gt;/</p>
+
+    <form method="post" class="mt-8 space-y-6">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-semibold entropy-text-soft">URL узла</label>
+        <div class="mt-1 flex items-center gap-1 text-sm">
+          <span class="entropy-text-faint">/n/</span>
+          <input type="text" name="slug" maxlength="32" required
+                 class="entropy-input flex-1" placeholder="news">
+          <span class="entropy-text-faint">/</span>
+        </div>
+        <p class="mt-1 text-xs entropy-text-subtle">Только латиница, цифры и дефисы.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold entropy-text-soft">Название</label>
+        <input type="text" name="name" maxlength="64" required
+               class="entropy-input mt-1 w-full" placeholder="Новости">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold entropy-text-soft">Описание</label>
+        <textarea name="description" rows="3" class="entropy-input mt-1 w-full"
+                  placeholder="Кратко об этом узле…"></textarea>
+      </div>
+      <div class="flex gap-3">
+        <button type="submit" class="entropy-btn-primary px-5 py-2.5 text-sm font-semibold">Создать узел</button>
+        <a href="{% url 'forum:node_list' %}" class="entropy-btn px-5 py-2.5 text-sm font-semibold">Отмена</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

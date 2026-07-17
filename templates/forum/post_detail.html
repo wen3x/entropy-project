@@ -23,6 +23,9 @@
     <p class="text-xs entropy-text-faint">
       <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ post.author.username }}</a>
       {% if post.is_golden %}<span class="ml-2 border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-yellow-500">Золотой пост · 24ч</span>{% endif %}
+      {% if post_node %}
+        &middot; <a href="{% url 'forum:node_detail' post_node.slug %}" class="hover:underline font-semibold">/n/{{ post_node.slug }}</a>
+      {% endif %}
       &middot; {{ post.created_at|date:"d.m.Y H:i" }}
     </p>
     <h1 class="mt-2 text-3xl font-extrabold uppercase tracking-tight">{{ post.title }}</h1>
@@ -66,14 +69,12 @@
   <section class="mt-10">
     <h2 class="text-lg font-extrabold uppercase tracking-tight border-b entropy-border pb-2">Комментарии</h2>
 
-    {% if user.is_authenticated and post.expires_at > now and comment_form %}
+    {% if user.is_authenticated and post.expires_at > now %}
       <form method="post" class="mt-4 entropy-card p-4">
         {% csrf_token %}
         {{ comment_form.text }}
         <button type="submit" class="entropy-btn-primary mt-3 px-4 py-2 text-sm font-semibold">Оставить мнение</button>
       </form>
-    {% elif user.is_authenticated and post.expires_at > now and has_top_level_comment %}
-      <p class="mt-4 text-sm entropy-text-faint">Вы уже оставили мнение. Отвечайте на комментарии ниже.</p>
     {% elif not user.is_authenticated %}
       <p class="mt-4 text-sm entropy-text-muted"><a href="{% url 'login' %}" class="underline font-semibold">Войдите</a>, чтобы комментировать.</p>
     {% elif post.expires_at <= now %}
@@ -81,60 +82,8 @@
     {% endif %}
 
     <ul class="mt-6 space-y-4">
-      {% for comment in top_comments %}
-        <li class="entropy-card p-4">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-bold">
-                <a href="{% url 'profile_detail' comment.author.username %}" class="hover:underline" {% with s=comment.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ comment.author.username }}</a>
-                {% if comment.is_approved %}<span class="ml-2 entropy-badge-invert px-2 py-0.5 text-[10px] font-extrabold uppercase">Одобрено</span>{% endif %}
-              </p>
-              <p class="mt-2 whitespace-pre-wrap text-sm entropy-text-soft">{{ comment.text }}</p>
-              {% if user.is_authenticated and post.expires_at > now %}
-              <form method="post" class="mt-3 flex gap-2">
-                {% csrf_token %}
-                <input type="hidden" name="reply_to" value="{{ comment.pk }}">
-                <input type="text" name="text" maxlength="2000" placeholder="Ответ…" class="entropy-input flex-1 text-xs" required>
-                <button type="submit" class="entropy-btn px-2 py-1 text-xs font-semibold">Ответ</button>
-              </form>
-              {% endif %}
-              {% if comment.replies.all %}
-              <ul class="mt-4 ml-4 space-y-3 border-l entropy-border-muted pl-4">
-                {% for reply in comment.replies.all %}
-                <li>
-                  <p class="text-xs entropy-text-faint"><a href="{% url 'profile_detail' reply.author.username %}" class="hover:underline" {% with s=reply.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ reply.author.username }}</a></p>
-                  <p class="mt-1 text-sm entropy-text-muted">{{ reply.text }}</p>
-                </li>
-                {% endfor %}
-              </ul>
-              {% endif %}
-            </div>
-            <div class="text-right text-xs entropy-text-faint">
-              <div class="countdown-pill border entropy-border px-2 py-0.5" data-role="expire-pill">
-                <span class="countdown tabular-nums" data-expires="{{ comment.expires_at.isoformat }}">…</span>
-              </div>
-              <div class="mt-1 flex items-center justify-end gap-1">
-                <span>&#9829; <span data-like-count-for="comment-{{ comment.pk }}">{{ comment.like_count }}</span></span>
-                {% if user.is_authenticated %}
-                  <button
-                    type="button"
-                    class="entropy-btn px-2 py-0.5 text-[10px] font-semibold"
-                    data-like-url="{% url 'forum:toggle_like_comment' comment.pk %}"
-                    data-like-id="comment-{{ comment.pk }}"
-                    data-liked="{% if comment.pk in liked_comment_ids %}true{% else %}false{% endif %}"
-                    aria-pressed="{% if comment.pk in liked_comment_ids %}true{% else %}false{% endif %}"
-                  >{% if comment.pk in liked_comment_ids %}−{% else %}+{% endif %}</button>
-                {% endif %}
-              </div>
-              {% if is_god and post.is_golden and not comment.is_approved %}
-                <form action="{% url 'forum:approve_comment' comment.pk %}" method="post" class="mt-2">
-                  {% csrf_token %}
-                  <button type="submit" class="entropy-btn-primary px-2 py-1 text-[10px] font-semibold">Одобрить</button>
-                </form>
-              {% endif %}
-            </div>
-          </div>
-        </li>
+      {% for comment in comment_tree %}
+        {% include "forum/_comment.html" with comment=comment %}
       {% empty %}
         <li class="text-sm entropy-text-faint">Комментариев пока нет.</li>
       {% endfor %}
@@ -177,5 +126,30 @@
   }
   tick(); setInterval(tick, 1000);
 })();
+
+// ── Comment editing (inline) ──
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.edit-comment-btn');
+  if (!btn) return;
+  e.preventDefault();
+  var pk = btn.getAttribute('data-comment-pk');
+  var text = btn.getAttribute('data-comment-text');
+  var parent = btn.closest('.flex.gap-1');
+  if (!parent) return;
+  // Replace button group with edit form
+  parent.innerHTML = '<form method="post" action="{% url 'forum:edit_comment' 0 %}" class="flex gap-2">'.replace('/comment/0/', '/comment/' + pk + '/') +
+    '{% csrf_token %}' +
+    '<input type="text" name="text" value="' + text.replace(/"/g, '&quot;') + '" maxlength="2000" class="entropy-input flex-1 text-xs" required>' +
+    '<button type="submit" class="entropy-btn-primary px-2 py-1 text-[10px] font-semibold">Сохранить</button>' +
+    '<button type="button" class="entropy-btn px-2 py-1 text-[10px] font-semibold cancel-edit">Отмена</button>' +
+    '</form>';
+});
+
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.cancel-edit');
+  if (!btn) return;
+  var form = btn.closest('form');
+  if (form) form.remove();
+});
 </script>
 {% endblock %}

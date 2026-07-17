@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import Count, F, Prefetch, Q
+from django.db.models import Count, F, Q
 from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseGone, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -26,7 +26,7 @@ from accounts.quests import (
 )
 
 from .forms import CommentForm, PostForm
-from .models import Comment, Like, Post
+from .models import Comment, Like, Node, Post
 from .rate_limit import allow_like, deny_like_message
 
 POST_CREATION_COST = 25
@@ -67,19 +67,25 @@ def comment_like_count(comment: Comment) -> int:
     ).count()
 
 
-def extend_post_on_comment(post: Post):
+def extend_post_on_comment(post: Post, user) -> bool:
+    """Продлевает жизнь поста, только если это первый комментарий пользователя к посту.
+    Возвращает True, если жизнь продлена, иначе False."""
     if post.is_golden:
-        return
+        return False
+    # Если у пользователя уже есть комментарий к этому посту — не продлеваем
+    if post.comments.filter(author=user, is_active=True).exists():
+        return False
     Post.objects.filter(pk=post.pk, is_active=True, is_golden=False).update(
         expires_at=F("expires_at") + timedelta(hours=12)
     )
+    return True
 
 
 def post_list(request):
     now = timezone.now()
     posts = (
         Post.objects.filter(expires_at__gt=now, is_active=True)
-        .select_related("author")
+        .select_related("author", "node")
         .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
         .order_by("-is_golden", "-is_pinned", "-like_count", "-created_at")
     )
@@ -120,8 +126,19 @@ def graveyard_list(request):
 
 
 def post_detail(request, slug):
+    return _post_detail_view(request, slug)
+
+
+def post_detail_in_node(request, node_slug, post_slug):
+    """Просмотр поста внутри узла."""
+    node = get_object_or_404(Node, slug=node_slug, is_active=True)
+    post = get_object_or_404(Post, slug=post_slug, node=node)
+    return _post_detail_view(request, post_slug, node=node)
+
+
+def _post_detail_view(request, slug, node=None):
     post = get_object_or_404(
-        Post.objects.select_related("author").annotate(
+        Post.objects.select_related("author", "node").annotate(
             like_count=Count("likes", filter=ACTIVE_LIKE)
         ),
         slug=slug,
@@ -131,29 +148,28 @@ def post_detail(request, slug):
         return HttpResponseGone("Пост удалён и больше недоступен.")
 
     now = timezone.now()
-    top_comments = (
-        post.comments.filter(
-            expires_at__gt=now,
-            is_active=True,
-            parent__isnull=True,
+    comment_ct = ContentType.objects.get_for_model(Comment)
+
+    # ── Build infinite comment tree ──
+    all_comments = list(
+        Comment.objects.filter(
+            post=post, is_active=True, expires_at__gt=now
         )
         .select_related("author")
-        .prefetch_related(
-            Prefetch(
-                "replies",
-                queryset=Comment.objects.filter(is_active=True, expires_at__gt=now)
-                .select_related("author")
-                .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
-                .order_by("created_at"),
-            )
-        )
         .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
+        .order_by("created_at")
     )
-    comment_ct = ContentType.objects.get_for_model(Comment)
+    comment_dict = {c.pk: c for c in all_comments}
+    comment_tree = []
+    for c in all_comments:
+        c._children = []
+        if c.parent_id is None:
+            comment_tree.append(c)
+        elif c.parent_id in comment_dict:
+            comment_dict[c.parent_id]._children.append(c)
 
     liked_post = False
     liked_comment_ids = set()
-    has_top_level_comment = False
     if request.user.is_authenticated:
         post_ct = ContentType.objects.get_for_model(Post)
         liked_post = Like.objects.filter(
@@ -162,9 +178,7 @@ def post_detail(request, slug):
             object_id=post.pk,
             is_active=True,
         ).exists()
-        all_comment_ids = list(top_comments.values_list("pk", flat=True))
-        for tc in top_comments:
-            all_comment_ids.extend(tc.replies.values_list("pk", flat=True))
+        all_comment_ids = [c.pk for c in all_comments]
         liked_comment_ids = set(
             Like.objects.filter(
                 user=request.user,
@@ -173,10 +187,8 @@ def post_detail(request, slug):
                 is_active=True,
             ).values_list("object_id", flat=True)
         )
-        has_top_level_comment = post.comments.filter(
-            author=request.user, parent__isnull=True
-        ).exists()
 
+    # ── Comment form (no cooldown — unlimited comments allowed) ──
     comment_form = None
     if request.user.is_authenticated and post.expires_at > now:
         if request.method == "POST":
@@ -185,7 +197,6 @@ def post_detail(request, slug):
                     Comment,
                     pk=request.POST.get("reply_to"),
                     post=post,
-                    parent__isnull=True,
                 )
                 text = request.POST.get("text", "").strip()
                 if text:
@@ -197,40 +208,35 @@ def post_detail(request, slug):
                     )
                     return redirect("forum:post_detail", slug=post.slug)
             else:
-                if has_top_level_comment:
-                    messages.error(
-                        request,
-                        "Под постом можно оставить только одно мнение (один комментарий верхнего уровня).",
-                    )
-                else:
-                    comment_form = CommentForm(request.POST)
-                    if comment_form.is_valid():
-                        with transaction.atomic():
-                            c = comment_form.save(commit=False)
-                            c.post = post
-                            c.author = request.user
-                            c.save()
-                            remaining_h = max(
-                                0,
-                                (post.expires_at - timezone.now()).total_seconds()
-                                / 3600,
-                            )
-                            extend_post_on_comment(post)
+                comment_form = CommentForm(request.POST)
+                if comment_form.is_valid():
+                    with transaction.atomic():
+                        c = comment_form.save(commit=False)
+                        c.post = post
+                        c.author = request.user
+                        c.save()
+                        remaining_h = max(
+                            0,
+                            (post.expires_at - timezone.now()).total_seconds()
+                            / 3600,
+                        )
+                        did_extend = extend_post_on_comment(post, request.user)
+                        if did_extend and remaining_h:
                             on_post_life_extended(
                                 request.user, post.pk, remaining_h
                             )
-                        check_post_comment_quests(post)
-                        return redirect("forum:post_detail", slug=post.slug)
+                    check_post_comment_quests(post)
+                    return redirect("forum:post_detail", slug=post.slug)
         else:
-            if not has_top_level_comment:
-                comment_form = CommentForm()
+            comment_form = CommentForm()
 
     return render(
         request,
         "forum/post_detail.html",
         {
             "post": post,
-            "top_comments": top_comments,
+            "post_node": node or post.node,
+            "comment_tree": comment_tree,
             "comment_form": comment_form,
             "now": now,
             "liked_post": liked_post,
@@ -238,7 +244,6 @@ def post_detail(request, slug):
             "can_delete": request.user.is_authenticated
             and (request.user.pk == post.author_id or is_god(request.user)),
             "is_god": is_god(request.user),
-            "has_top_level_comment": has_top_level_comment,
         },
     )
 
@@ -516,6 +521,161 @@ def approve_comment(request, pk):
         f"Комментарий одобрен. Автору начислено {APPROVAL_REWARD} токенов.",
     )
     return redirect(comment.post.get_absolute_url())
+
+
+@login_required
+@require_http_methods(["POST"])
+def edit_comment(request, pk):
+    """Редактирование комментария: автор может изменить текст, появляется пометка «Изменено»."""
+    comment = get_object_or_404(Comment, pk=pk)
+    if request.user.pk != comment.author_id:
+        return HttpResponseForbidden("Доступ запрещён.")
+    if not comment.is_active or not comment.post.is_active:
+        messages.error(request, "Комментарий недоступен для редактирования.")
+        return redirect(comment.post.get_absolute_url())
+    text = request.POST.get("text", "").strip()
+    if text:
+        comment.text = text
+        comment.edited_at = timezone.now()
+        comment.save(update_fields=["text", "edited_at"])
+        messages.success(request, "Комментарий изменён.")
+    return redirect(comment.post.get_absolute_url())
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_comment(request, pk):
+    """Удаление комментария: автор или wen3x может удалить любой комментарий/ответ."""
+    comment = get_object_or_404(Comment, pk=pk)
+    if not (request.user.pk == comment.author_id or is_god(request.user)):
+        return HttpResponseForbidden("Доступ запрещён.")
+    if not comment.is_active:
+        messages.info(request, "Комментарий уже удалён.")
+    else:
+        comment.is_active = False
+        comment.save(update_fields=["is_active"])
+        messages.success(request, "Комментарий удалён.")
+    return redirect(comment.post.get_absolute_url())
+
+
+# ── NODES (Узлы) ─────────────────────────────────────────────────────────────
+
+def node_list(request):
+    """Список всех активных узлов."""
+    nodes = Node.objects.filter(is_active=True).annotate(
+        post_count=Count("posts", filter=Q(posts__is_active=True, posts__expires_at__gt=timezone.now())),
+        like_count=Count("posts__likes", filter=Q(posts__likes__is_active=True, posts__is_active=True, posts__expires_at__gt=timezone.now())),
+    )
+    return render(request, "forum/node_list.html", {"nodes": nodes, "is_god": is_god(request.user)})
+
+
+def node_detail(request, node_slug):
+    """Страница узла со списком постов в нём."""
+    node = get_object_or_404(Node, slug=node_slug, is_active=True)
+    now = timezone.now()
+    posts = (
+        Post.objects.filter(node=node, expires_at__gt=now, is_active=True)
+        .select_related("author")
+        .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
+        .order_by("-is_golden", "-is_pinned", "-like_count", "-created_at")
+    )
+    total_posts = posts.count()
+    total_likes = Like.objects.filter(
+        content_type=ContentType.objects.get_for_model(Post),
+        object_id__in=posts.values_list("pk", flat=True),
+        is_active=True,
+    ).count()
+
+    liked_slugs = set()
+    post_ct = ContentType.objects.get_for_model(Post)
+    if request.user.is_authenticated:
+        liked_ids = Like.objects.filter(
+            user=request.user,
+            content_type=post_ct,
+            object_id__in=posts.values_list("pk", flat=True),
+            is_active=True,
+        ).values_list("object_id", flat=True)
+        liked_slugs = set(
+            Post.objects.filter(pk__in=liked_ids).values_list("slug", flat=True)
+        )
+
+    return render(
+        request,
+        "forum/node_detail.html",
+        {
+            "node": node,
+            "posts": posts,
+            "liked_slugs": liked_slugs,
+            "total_posts": total_posts,
+            "total_likes": total_likes,
+            "is_god": is_god(request.user),
+        },
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def create_node(request):
+    """Создание узла (только wen3x)."""
+    if not is_god(request.user):
+        return HttpResponseForbidden("Доступ запрещён.")
+
+    if request.method == "POST":
+        slug = request.POST.get("slug", "").strip().lower()
+        name = request.POST.get("name", "").strip()
+        description = request.POST.get("description", "").strip()
+        if slug and name:
+            if Node.objects.filter(slug=slug).exists():
+                messages.error(request, f"Узел с таким URL уже существует: /n/{slug}/")
+            else:
+                Node.objects.create(
+                    slug=slug,
+                    name=name,
+                    description=description,
+                    created_by=request.user,
+                )
+                messages.success(request, f"Узел «{name}» создан: /n/{slug}/")
+                return redirect("forum:node_detail", node_slug=slug)
+        else:
+            messages.error(request, "Укажите URL и название узла.")
+        return redirect("forum:create_node")
+
+    return render(request, "forum/node_form.html", {"is_god": is_god(request.user)})
+
+
+# ── SEARCH ────────────────────────────────────────────────────────────────────
+
+def search_view(request):
+    """Поиск по узлам и постам."""
+    q = request.GET.get("q", "").strip()
+    node_results = []
+    post_results = []
+    if q:
+        now = timezone.now()
+        node_results = Node.objects.filter(
+            Q(name__icontains=q) | Q(slug__icontains=q) | Q(description__icontains=q),
+            is_active=True,
+        )[:10]
+        post_results = (
+            Post.objects.filter(
+                Q(title__icontains=q) | Q(content__icontains=q),
+                is_active=True,
+                expires_at__gt=now,
+            )
+            .select_related("author", "node")
+            .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))[:20]
+        )
+
+    return render(
+        request,
+        "forum/search.html",
+        {
+            "q": q,
+            "node_results": node_results,
+            "post_results": post_results,
+            "is_god": is_god(request.user),
+        },
+    )
 
 
 # ── SEO: robots.txt ──────────────────────────────────────────────────────────

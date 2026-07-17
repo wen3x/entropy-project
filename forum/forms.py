@@ -20,7 +20,7 @@ class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ("text",)
-        labels = {"text": "Ваше мнение (один раз под постом)"}
+        labels = {"text": "Ваше мнение"}
         widgets = {
             "text": forms.Textarea(
                 attrs={

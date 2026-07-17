@@ -11,10 +11,12 @@ def author_style(profile_color: str) -> str:
     if not palette:
         return ""
     color = palette["fg"]
-    glow = palette.get("glow", "")
     style = f"color:{color};font-weight:600"
-    if glow:
-        style += f";text-shadow:{glow}"
+    # Только золотая тема даёт свечение, остальные — только цвет
+    if profile_color == "gold":
+        glow = palette.get("glow", "")
+        if glow:
+            style += f";text-shadow:{glow}"
     return style
 
 
