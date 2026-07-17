@@ -1,3 +1,4 @@
+from pathlib import Path
 from datetime import timedelta
 
 from django.contrib import messages
@@ -739,6 +740,17 @@ def search_view(request):
 def custom_404(request, exception=None):
     """Кастомная страница 404 ошибки вместо стандартной."""
     return render(request, "404.html", status=404)
+
+
+# ── PWA: Service Worker (/sw.js) ──────────────────────────────────────────
+
+def service_worker(request):
+    """Serve the service worker from the site root so its scope covers /."""
+    sw_path = Path(__file__).resolve().parent.parent / "static" / "js" / "sw.js"
+    return HttpResponse(
+        sw_path.read_text("utf-8"),
+        content_type="application/javascript",
+    )
 
 
 # ── PWA: manifest.json ──────────────────────────────────────────────────────
