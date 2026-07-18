@@ -973,7 +973,6 @@ def debug_view(request):
     
     # ── Detailed ban info ──
     ban_rows = ""
-    unique_banned_users = set()
     if ban_table_ok:
         bans = Ban.objects.select_related('user', 'node').order_by('-created_at')[:20]
         for b in bans:
@@ -982,13 +981,36 @@ def debug_view(request):
             expires = b.expires_at.strftime("%d.%m %H:%M")
             expired = "(истёк)" if b.expires_at < now else "(АКТИВЕН)"
             reason = f"· {b.reason}" if b.reason else ""
+            
+            # RAW data dump for each ban
+            pk = b.pk
+            raw_node_id = Ban.objects.filter(pk=b.pk).values_list('node_id', flat=True).first()
+            node_id_str = f"node_id={raw_node_id}"
+            
+            # Manual test: count all bans for this user
+            all_for_user = Ban.objects.filter(user=b.user).count()
+            
+            # Manual test: count active bans for this user (no node filter)
+            active_no_node = Ban.objects.filter(user=b.user, expires_at__gt=now).count()
+            
+            # Manual test: count active bans for this user with node__isnull=True
+            active_isnull = Ban.objects.filter(user=b.user, expires_at__gt=now, node__isnull=True).count()
+            
+            # Manual test: count with node_id__isnull=True (same thing, raw column)
+            active_isnull_raw = Ban.objects.filter(user=b.user, expires_at__gt=now, node_id__isnull=True).count()
+            
             # Also test is_banned for each banned user
             test_global = "✅" if is_banned(b.user) else "❌"
             test_with_node = ""
             if b.node:
                 test_with_node = f" | is_banned(+node): {'✅' if is_banned(b.user, b.node) else '❌'}"
-            ban_rows += f"<tr><td>{uname}</td><td>{target}</td><td>{expires}</td><td style='color:{'#ff4444' if '(АКТИВЕН)' in expired else '#888'}'>{expired}</td><td>{reason}</td><td>{test_global}{test_with_node}</td></tr>"
-            unique_banned_users.add(uname)
+            ban_rows += f"<tr><td>{uname}</td><td>{target}</td><td>{expires}</td>"
+            ban_rows += f"<td style='color:{'#ff4444' if '(АКТИВЕН)' in expired else '#888'}'>{expired}</td>"
+            ban_rows += f"<td>{reason}</td>"
+            ban_rows += f"<td>{test_global}{test_with_node}</td>"
+            ban_rows += f"<td style='font-size:0.75rem;color:#aaa'>"
+            ban_rows += f"pk={pk}, {node_id_str}, все={all_for_user}, active={active_no_node}, active+isnull={active_isnull}, active+id_isnull={active_isnull_raw}"
+            ban_rows += f"</td></tr>"
     
     # ── Test is_banned for current user ──
     self_ban_status = is_banned(request.user) if request.user.is_authenticated else False
@@ -1014,7 +1036,7 @@ def debug_view(request):
     </table>
     <h3>📋 Все баны в БД (с тестом is_banned для каждого):</h3>
     <table border="1" style="border-collapse:collapse;border-color:#333;width:100%;">
-    <tr><th>Пользователь</th><th>Тип</th><th>Истекает</th><th>Статус</th><th>Причина</th><th>is_banned()</th></tr>
+    <tr><th>Пользователь</th><th>Тип</th><th>Истекает</th><th>Статус</th><th>Причина</th><th>is_banned()</th><th>RAW (pk, node_id, counts)</th></tr>
     {ban_rows or '<tr><td colspan="6">Нет банов</td></tr>'}
     </table>
     <p>✅ = новая версия | ❌ = старая версия | (АКТИВЕН) = бан ещё действует</p>
