@@ -189,6 +189,33 @@ class NodeSubscription(models.Model):
         return f"{self.user.username} → {self.node.name}"
 
 
+class Ban(models.Model):
+    """Бан пользователя. Если node=None — глобальный бан (не может писать нигде).
+    Если node задан — пользователь не может писать в этом узле."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="bans",
+    )
+    node = models.ForeignKey(
+        "forum.Node",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="bans",
+    )
+    reason = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        target = "глобальный" if self.node is None else f"узел «{self.node.name}»"
+        return f"Бан {self.user.username} ({target}) до {self.expires_at:%d.%m %H:%M}"
+
+
 class PushSubscription(models.Model):
     """Подписка браузера на Push-уведомления (Web Push Protocol)."""
     user = models.ForeignKey(

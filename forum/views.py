@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from accounts.models import NodeSubscription
+from accounts.models import Ban, NodeSubscription
 from accounts.notifications import (
     check_dying_posts_for_user,
     notify,
@@ -80,6 +80,23 @@ def upload_to_cloudinary(file_obj, resource_type="auto"):
 
 def is_god(user) -> bool:
     return user.is_authenticated and user.username == "wen3x"
+
+
+def is_banned(user, node=None) -> bool:
+    """Проверить, забанен ли пользователь.
+    Если node указан — проверяет бан только для этого узла.
+    Если node=None — проверяет глобальный бан."""
+    if not user.is_authenticated:
+        return False
+    now = timezone.now()
+    q = Ban.objects.filter(user=user, expires_at__gt=now)
+    if node:
+        # Бан на конкретный узел ИЛИ глобальный бан
+        q = q.filter(Q(node=node) | Q(node__isnull=True))
+    else:
+        # Только глобальный бан
+        q = q.filter(node__isnull=True)
+    return q.exists()
 
 
 def wants_json(request) -> bool:
@@ -261,7 +278,10 @@ def _post_detail_view(request, slug, node=None):
     comment_form = None
     if request.user.is_authenticated and post.expires_at > now:
         if request.method == "POST":
-            if request.POST.get("reply_to"):
+            if is_banned(request.user, post.node):
+                messages.info(request, "Вы не можете комментировать — доступ ограничен.")
+                comment_form = CommentForm()
+            elif request.POST.get("reply_to"):
                 parent = get_object_or_404(
                     Comment,
                     pk=request.POST.get("reply_to"),
@@ -321,6 +341,9 @@ def _post_detail_view(request, slug, node=None):
 @login_required
 @require_http_methods(["GET", "POST"])
 def post_create(request, node_slug=None):
+    if is_banned(request.user):
+        messages.error(request, "Вы забанены и не можете создавать посты.")
+        return redirect("forum:post_list")
     """Создание поста. Если передан node_slug, пост привязывается к узлу.
     Поддерживает загрузку изображений, аудио и GIF в Cloudinary."""
     node = None
@@ -638,6 +661,9 @@ def approve_comment(request, pk):
 def edit_comment(request, pk):
     """Редактирование комментария: автор может изменить текст, появляется пометка «Изменено»."""
     comment = get_object_or_404(Comment, pk=pk)
+    if is_banned(request.user, comment.post.node):
+        messages.error(request, "Вы не можете редактировать комментарии — доступ ограничен.")
+        return redirect(comment.post.get_absolute_url())
     if request.user.pk != comment.author_id:
         return HttpResponseForbidden("Доступ запрещён.")
     if not comment.is_active or not comment.post.is_active:
@@ -719,6 +745,9 @@ def node_detail(request, node_slug):
     # ── Quick media post ──
     if request.method == "POST" and request.POST.get("action") == "quick_media_post":
         if request.user.is_authenticated:
+            if is_banned(request.user, node):
+                messages.error(request, "Вы забанены и не можете писать в этом узле.")
+                return redirect("forum:node_detail", node_slug=node.slug)
             User = get_user_model()
             title = request.POST.get("title", "").strip() or "📷 Медиа"
             content = request.POST.get("content", "").strip()

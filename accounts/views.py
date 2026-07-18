@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.core.management import call_command
 from django.db.models import F
 from django.http import HttpResponseForbidden, JsonResponse
@@ -15,7 +16,9 @@ from django.views.decorators.http import require_http_methods
 from forum.models import Post
 
 from .forms import RegistrationForm
-from .models import ShopItem
+from forum.models import Node
+
+from .models import Ban, ShopItem
 from .quests import ensure_default_quests, get_user_quests_context
 from .shop import ensure_default_shop_items, get_visible_shop_items, purchase_item, reset_theme
 from .streaks import STREAK_MAX_DAYS, STREAK_SCHEDULE, get_streak_page_context
@@ -271,9 +274,10 @@ def secret_panel(request):
     if request.user.username != "wen3x":
         return HttpResponseForbidden("Доступ запрещён.")
 
+    User = get_user_model()
+
     if request.method == "POST":
         action = request.POST.get("action")
-        from accounts.models import User
 
         if action == "add_tokens":
             User.objects.filter(pk=request.user.pk).update(tokens=F("tokens") + 100)
@@ -295,11 +299,68 @@ def secret_panel(request):
                 messages.success(request, f"«{item.title}» {state} в магазине.")
             else:
                 messages.error(request, "Товар не найден.")
+        elif action == "ban_user":
+            username = request.POST.get("ban_username", "").strip()
+            node_slug = request.POST.get("ban_node", "").strip()
+            hours = request.POST.get("ban_hours", "").strip()
+
+            if not username or not hours:
+                messages.error(request, "Укажите ник и время бана.")
+            else:
+                try:
+                    target_user = User.objects.get(username__iexact=username)
+                except User.DoesNotExist:
+                    messages.error(request, f"Пользователь «{username}» не найден.")
+                    return redirect("secret_panel")
+
+                try:
+                    duration = float(hours)
+                    if duration <= 0:
+                        raise ValueError
+                except (ValueError, TypeError):
+                    messages.error(request, "Время должно быть положительным числом (часы).")
+                    return redirect("secret_panel")
+
+                node = None
+                ban_type = "глобальный"
+                if node_slug:
+                    node = Node.objects.filter(slug=node_slug).first()
+                    if not node:
+                        messages.error(request, f"Узел «{node_slug}» не найден.")
+                        return redirect("secret_panel")
+                    ban_type = f"узел «{node.name}»"
+
+                Ban.objects.create(
+                    user=target_user,
+                    node=node,
+                    expires_at=timezone.now() + timedelta(hours=duration),
+                    reason=request.POST.get("ban_reason", "").strip(),
+                )
+                messages.success(
+                    request,
+                    f"Пользователь «{target_user.username}» забанен ({ban_type}) на {duration} ч.",
+                )
+        elif action == "unban_user":
+            ban_id = request.POST.get("ban_id", "")
+            ban = Ban.objects.filter(pk=ban_id).first()
+            if ban:
+                target = ban.user.username
+                ban.delete()
+                messages.success(request, f"Бан пользователя «{target}» снят.")
+            else:
+                messages.error(request, "Бан не найден.")
+
         return redirect("secret_panel")
 
     ensure_default_shop_items()
+    now = timezone.now()
+    active_bans = Ban.objects.filter(expires_at__gt=now).select_related("user", "node").order_by("-created_at")[:50]
     return render(
         request,
         "accounts/secret_panel.html",
-        {"shop_items": ShopItem.objects.order_by("sort_order", "id")},
+        {
+            "shop_items": ShopItem.objects.order_by("sort_order", "id"),
+            "active_bans": active_bans,
+            "nodes": Node.objects.filter(is_active=True).order_by("name"),
+        },
     )
