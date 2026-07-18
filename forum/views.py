@@ -981,18 +981,41 @@ def debug_view(request):
     except Exception:
         has_ban_banner = False
 
+    # ── Detailed ban info ──
+    ban_rows = ""
+    if ban_table_ok:
+        bans = Ban.objects.select_related('user', 'node').order_by('-created_at')[:20]
+        for b in bans:
+            uname = b.user.username
+            target = "🌐 глобальный" if b.node is None else f"📁 {b.node.name}"
+            expires = b.expires_at.strftime("%d.%m %H:%M")
+            expired = "(истёк)" if b.expires_at < timezone.now() else ""
+            reason = f"· {b.reason}" if b.reason else ""
+            ban_rows += f"<tr><td>{uname}</td><td>{target}</td><td>{expires}</td><td>{expired}</td><td>{reason}</td></tr>"
+    
+    # ── Test is_banned for current user ──
+    self_ban_status = is_banned(request.user) if request.user.is_authenticated else False
+    self_ban_info = f"{'✅ ЗАБАНЕН' if self_ban_status else '❌ НЕ забанен'}" if request.user.is_authenticated else "не авторизован"
+    
     html = f"""
     <html><body style="font-family:monospace;padding:2rem;background:#000;color:#0f0;">
     <h2>🔍 Диагностика Entropy</h2>
-    <table border="1" style="border-collapse:collapse;border-color:#333;">
+    <table border="1" style="border-collapse:collapse;border-color:#333;width:100%;">
     <tr><td>Git commit</td><td>{git_hash}</td></tr>
     <tr><td>Ban table exists</td><td>{'✅' if ban_table_ok else '❌'}</td></tr>
     <tr><td>Ban records</td><td>{ban_count}</td></tr>
     <tr><td>is_banned() в коде</td><td>{'✅' if has_is_banned else '❌'}</td></tr>
-    <tr><td>base.html (nav+ban)</td><td>{'✅' if has_ban_banner else '❌'}</td></tr>
+    <tr><td>base.html (nav+ban+inlineCSS)</td><td>{'✅' if has_ban_banner else '❌'}</td></tr>
     <tr><td>ВЕРДИКТ</td><td>{'НОВЫЙ код 🟢' if has_is_banned else 'СТАРЫЙ код 🔴'}</td></tr>
+    <tr><td><b>ВАШ СТАТУС</b></td><td><b>{self_ban_info}</b></td></tr>
+    </table>
+    <h3>📋 Все баны в БД:</h3>
+    <table border="1" style="border-collapse:collapse;border-color:#333;width:100%;">
+    <tr><th>Пользователь</th><th>Тип</th><th>Истекает</th><th></th><th>Причина</th></tr>
+    {ban_rows or '<tr><td colspan="5">Нет банов</td></tr>'}
     </table>
     <p>✅ = новая версия | ❌ = старая версия</p>
+    <p><b>ВАШ СТАТУС:</b> is_banned(request.user) = {self_ban_status} — если True, то бан работает для вас</p>
     </body></html>
     """
     return HttpResponse(html, content_type="text/html")

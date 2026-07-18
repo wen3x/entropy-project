@@ -53,7 +53,56 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/entropy-site.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/entropy-site.css' %}?v=3">
+  <style>
+    /* ── Bottom nav (inline — только для мобильных, не зависит от CSS-файла) ── */
+    @media (max-width: 767px) {
+      .entropy-bottom-nav {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 40;
+        display: flex;
+        align-items: stretch;
+        background: var(--entropy-header-bg, #ffffff);
+        border-top: 2px solid var(--entropy-border, #000000);
+        box-shadow: 0 -3px 0 0 var(--entropy-border, #000000);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+        height: 68px;
+      }
+      .entropy-bottom-nav__item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: 6px 4px;
+        border: none;
+        background: transparent;
+        color: var(--entropy-fg-muted, rgba(0,0,0,0.62));
+        cursor: pointer;
+        transition: color 0.15s ease, background 0.15s ease;
+        text-decoration: none;
+        min-width: 0;
+        position: relative;
+      }
+      .entropy-bottom-nav__item:hover,
+      .entropy-bottom-nav__item:active {
+        color: var(--entropy-fg, #000000);
+        background: var(--entropy-surface-hover, rgba(0,0,0,0.06));
+      }
+      .entropy-bottom-nav__icon { flex-shrink: 0; }
+      .entropy-bottom-nav__label {
+        font-size: 0.625rem;
+        font-weight: 600;
+        line-height: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+      }
+    }
+  </style>
 </head>
 <body class="min-h-full antialiased">
 
