@@ -143,6 +143,12 @@
         {% endfor %}
       </ul>
     {% endif %}
+    {% if active_ban %}
+      <div class="mb-6 entropy-message px-4 py-3 text-sm font-semibold" style="border-color: #ef4444 !important; color: #ef4444;">
+        ⛔ Вы забанены до {{ active_ban.expires_at|date:"d.m.Y H:i" }}
+        {% if active_ban.reason %}<span style="opacity:0.7; font-weight: 500;">· {{ active_ban.reason }}</span>{% endif %}
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

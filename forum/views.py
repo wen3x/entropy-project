@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Count, F, Q
+import django.db.utils
 from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseGone, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -85,18 +86,21 @@ def is_god(user) -> bool:
 def is_banned(user, node=None) -> bool:
     """Проверить, забанен ли пользователь.
     Если node указан — проверяет бан только для этого узла.
-    Если node=None — проверяет глобальный бан."""
+    Если node=None — проверяет глобальный бан.
+    Если таблица банов не существует — безопасно возвращает False."""
     if not user.is_authenticated:
         return False
-    now = timezone.now()
-    q = Ban.objects.filter(user=user, expires_at__gt=now)
-    if node:
-        # Бан на конкретный узел ИЛИ глобальный бан
-        q = q.filter(Q(node=node) | Q(node__isnull=True))
-    else:
-        # Только глобальный бан
-        q = q.filter(node__isnull=True)
-    return q.exists()
+    try:
+        now = timezone.now()
+        q = Ban.objects.filter(user=user, expires_at__gt=now)
+        if node:
+            q = q.filter(Q(node=node) | Q(node__isnull=True))
+        else:
+            q = q.filter(node__isnull=True)
+        return q.exists()
+    except (django.db.utils.OperationalError, django.db.utils.ProgrammingError):
+        # Таблица может не существовать (миграция не применилась)
+        return False
 
 
 def wants_json(request) -> bool:
