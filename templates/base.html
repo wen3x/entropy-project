@@ -61,7 +61,7 @@
     <nav class="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4">
       <div class="flex min-w-0 items-center gap-2 sm:gap-4">
         <button type="button" id="menu-toggle"
-          class="entropy-btn flex h-11 w-11 shrink-0 items-center justify-center p-0"
+          class="entropy-btn hidden sm:flex h-11 w-11 shrink-0 items-center justify-center p-0"
           aria-label="Открыть меню">
           <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"/>
@@ -71,7 +71,7 @@
       </div>
 
       <div class="flex shrink-0 items-center gap-2 text-sm sm:gap-3">
-        <button type="button" id="site-theme-toggle" class="entropy-theme-toggle" aria-label="Переключить тему сайта">
+        <button type="button" id="site-theme-toggle" class="entropy-theme-toggle hidden sm:inline-flex" aria-label="Переключить тему сайта">
           <svg class="theme-icon-light h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
           </svg>
@@ -85,7 +85,7 @@
             <span class="sm:hidden">{{ user.tokens }}</span>
           </span>
           <a href="{% url 'notifications_list' %}"
-             class="entropy-icon-btn relative flex h-11 w-11 shrink-0 items-center justify-center"
+             class="entropy-icon-btn relative hidden sm:flex h-11 w-11 shrink-0 items-center justify-center"
              aria-label="Уведомления">
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-width="2" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -94,10 +94,10 @@
               <span class="notif-badge absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center px-1 text-[10px] font-bold">{{ unread_notifications }}</span>
             {% endif %}
           </a>
-          <a href="{% url 'profile_detail' user.username %}" class="entropy-btn px-3 py-1.5 text-sm font-semibold">@{{ user.username }}</a>
+          <a href="{% url 'profile_detail' user.username %}" class="entropy-btn px-3 py-1.5 text-sm font-semibold hidden sm:inline-flex">@{{ user.username }}</a>
         {% else %}
-          <a href="{% url 'login' %}" class="entropy-btn px-3 py-1.5 text-sm font-semibold">Вход</a>
-          <a href="{% url 'register' %}" class="entropy-btn-primary px-3 py-1.5 text-sm font-semibold">Регистрация</a>
+          <a href="{% url 'login' %}" class="entropy-btn px-3 py-1.5 text-sm font-semibold hidden sm:inline-flex">Вход</a>
+          <a href="{% url 'register' %}" class="entropy-btn-primary px-3 py-1.5 text-sm font-semibold hidden sm:inline-flex">Регистрация</a>
         {% endif %}
       </div>
     </nav>
@@ -133,7 +133,7 @@
     </nav>
   </aside>
 
-  <main class="mx-auto max-w-5xl px-4 py-8">
+  <main class="mx-auto max-w-5xl px-4 py-8 pb-28 sm:pb-8">
     {% if messages %}
       <ul class="mb-6 space-y-2">
         {% for message in messages %}
@@ -146,9 +146,105 @@
     {% block content %}{% endblock %}
   </main>
 
+  {# ── Bottom navigation (mobile) ── #}
+  <nav class="entropy-bottom-nav md:hidden">
+    <a href="{% url 'forum:node_list' %}" class="entropy-bottom-nav__item">
+      <svg class="h-6 w-6 entropy-bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+      </svg>
+      <span class="entropy-bottom-nav__label">Узлы</span>
+    </a>
+    <a href="{% if user.is_authenticated %}{% url 'notifications_list' %}{% else %}{% url 'register' %}{% endif %}" class="entropy-bottom-nav__item">
+      <span class="relative inline-flex">
+        <svg class="h-6 w-6 entropy-bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-width="2" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+        {% if user.is_authenticated and unread_notifications %}
+          <span class="notif-badge absolute -right-2 -top-1.5 flex h-4 min-w-[1rem] items-center justify-center px-1 text-[10px] font-bold">{{ unread_notifications }}</span>
+        {% endif %}
+      </span>
+      <span class="entropy-bottom-nav__label">{% if user.is_authenticated %}Уведомл.{% else %}Регистр.{% endif %}</span>
+    </a>
+    <a href="{% if user.is_authenticated %}{% url 'profile_detail' user.username %}{% else %}{% url 'login' %}{% endif %}" class="entropy-bottom-nav__item">
+      <svg class="h-6 w-6 entropy-bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+      </svg>
+      <span class="entropy-bottom-nav__label">{% if user.is_authenticated %}Профиль{% else %}Вход{% endif %}</span>
+    </a>
+    <button type="button" id="nav-more" class="entropy-bottom-nav__item">
+      <svg class="h-6 w-6 entropy-bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01"/>
+      </svg>
+      <span class="entropy-bottom-nav__label">Ещё</span>
+    </button>
+  </nav>
+
   <footer class="entropy-footer py-8 text-center text-xs">
     <span class="entropy-text-faint">Entropy &middot; контент умирает по таймеру</span>
   </footer>
+
+  {# ── Прочее popup ── #}
+  <div id="more-overlay" class="fixed inset-0 z-50 bg-black/45 opacity-0 pointer-events-none transition-opacity duration-200" aria-hidden="true"></div>
+  <div id="more-popup" class="fixed bottom-0 left-0 right-0 z-50 translate-y-full transition-transform duration-300 ease-in-out">
+    <div class="entropy-card mx-auto max-w-lg" style="border-bottom-width: 0; box-shadow: 0 -4px 0 0 var(--entropy-border);">
+      <div class="space-y-2 p-4">
+        <button type="button" id="popup-theme-toggle" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
+          <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path class="popup-theme-light" stroke-linecap="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+            <path class="popup-theme-dark hidden" stroke-linecap="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+          <span id="popup-theme-label">Тёмная тема</span>
+        </button>
+        <a href="{% url 'forum:graveyard_list' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
+          <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+          Кладбище
+        </a>
+        <a href="{% url 'shop' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
+          <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
+          Магазин
+        </a>
+        <a href="{% url 'streaks' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
+          <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
+          </svg>
+          Стрики
+        </a>
+        <a href="{{ donation_alerts_url }}" target="_blank" rel="noopener noreferrer" class="da-btn" style="display: flex; align-items: center; gap: 0.75rem;">
+          <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+          </svg>
+          DonationAlerts
+        </a>
+        {% if is_god %}
+        <a href="{% url 'secret_panel' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
+          <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+          Секретная панель
+        </a>
+        {% endif %}
+        {% if user.is_authenticated %}
+        <form action="{% url 'logout' %}" method="post" class="!mb-0">
+          {% csrf_token %}
+          <button type="submit" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
+            <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            Выйти
+          </button>
+        </form>
+        {% else %}
+        <a href="{% url 'login' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">Вход</a>
+        <a href="{% url 'register' %}" class="entropy-btn-primary w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">Регистрация</a>
+        {% endif %}
+      </div>
+      <button type="button" id="popup-close" class="w-full py-4 text-center text-sm font-semibold entropy-text-faint border-t entropy-border">Закрыть</button>
+    </div>
+  </div>
 
   <script src="{% static 'js/entropy-theme.js' %}"></script>
 
@@ -188,6 +284,67 @@
     toggle.addEventListener('click', openMenu);
     if (closeBtn) closeBtn.addEventListener('click', closeMenu);
     overlay.addEventListener('click', closeMenu);
+  })();
+
+  {# ── Прочее popup ── #}
+  (function () {
+    var moreBtn = document.getElementById('nav-more');
+    var moreOverlay = document.getElementById('more-overlay');
+    var morePopup = document.getElementById('more-popup');
+    var popupClose = document.getElementById('popup-close');
+    if (!moreBtn || !moreOverlay || !morePopup) return;
+    function openMore() {
+      moreOverlay.classList.remove('pointer-events-none', 'opacity-0');
+      moreOverlay.classList.add('opacity-100');
+      morePopup.classList.remove('translate-y-full');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeMore() {
+      moreOverlay.classList.add('pointer-events-none', 'opacity-0');
+      moreOverlay.classList.remove('opacity-100');
+      morePopup.classList.add('translate-y-full');
+      document.body.style.overflow = '';
+    }
+    moreBtn.addEventListener('click', openMore);
+    if (popupClose) popupClose.addEventListener('click', closeMore);
+    moreOverlay.addEventListener('click', closeMore);
+    // Закрыть по Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMore();
+    });
+  })();
+
+  {# ── Popup theme toggle ── #}
+  (function () {
+    var popupToggle = document.getElementById('popup-theme-toggle');
+    var popupLabel = document.getElementById('popup-theme-label');
+    var lightIcon = document.querySelector('.popup-theme-light');
+    var darkIcon = document.querySelector('.popup-theme-dark');
+    if (!popupToggle) return;
+    function updatePopupTheme() {
+      var isDark = document.documentElement.getAttribute('data-site-theme') === 'dark';
+      if (popupLabel) popupLabel.textContent = isDark ? 'Светлая тема' : 'Тёмная тема';
+      if (lightIcon && darkIcon) {
+        lightIcon.classList.toggle('hidden', isDark);
+        darkIcon.classList.toggle('hidden', !isDark);
+      }
+    }
+    updatePopupTheme();
+    popupToggle.addEventListener('click', function () {
+      var html = document.documentElement;
+      var isDark = html.getAttribute('data-site-theme') === 'dark';
+      var newTheme = isDark ? 'light' : 'dark';
+      html.setAttribute('data-site-theme', newTheme);
+      localStorage.setItem('entropy-site-theme', newTheme);
+      updatePopupTheme();
+      // Sync with main theme toggle if available
+      var mainToggle = document.getElementById('site-theme-toggle');
+      if (mainToggle) {
+        // Just trigger a small visual update
+        mainToggle.style.transform = 'scale(0.95)';
+        setTimeout(function () { mainToggle.style.transform = ''; }, 150);
+      }
+    });
   })();
   </script>
   {# ── PWA: Install banner (Android only) ── #}

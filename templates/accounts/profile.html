@@ -13,7 +13,9 @@
         </div>
         {% if is_own_profile %}
         <div class="flex items-center gap-3 border entropy-border px-4 py-3">
-          <span class="text-3xl">&#128293;</span>
+          <svg class="h-9 w-9 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/>
+          </svg>
           <div>
             <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">Стрик</p>
             <p class="text-2xl font-extrabold tabular-nums">{{ profile_user.login_streak }} <span class="text-sm font-medium entropy-text-faint">дн.</span></p>
@@ -100,7 +102,9 @@
         </div>
         {% if is_own_profile %}
         <div class="profile-streak-box flex items-center gap-3 px-4 py-3" style="border-color: {{ profile_theme.fg }}">
-          <span class="text-3xl">&#128293;</span>
+          <svg class="h-9 w-9 shrink-0" viewBox="0 0 24 24" fill="currentColor" style="color: {{ profile_theme.fg }}">
+            <path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/>
+          </svg>
           <div>
             <p class="text-xs font-bold uppercase tracking-widest" style="color: {{ profile_theme.fg_faint }}">Стрик</p>
             <p class="text-2xl font-extrabold tabular-nums" style="color: {{ profile_theme.fg }}">{{ profile_user.login_streak }} <span class="text-sm font-medium" style="color: {{ profile_theme.fg_faint }}">дн.</span></p>

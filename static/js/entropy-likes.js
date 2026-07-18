@@ -28,16 +28,14 @@
     }, 3200);
   }
 
-  function updateLikeButton(btn, liked) {
-    var label = btn.getAttribute("data-like-label");
-    var unlikeLabel = btn.getAttribute("data-unlike-label");
-    if (label && unlikeLabel) {
-      btn.textContent = liked ? unlikeLabel : label;
-    } else {
-      btn.textContent = liked ? "−" : "+";
+  function updateLikeHeart(btn, liked) {
+    var heart = btn.querySelector('.like-heart');
+    if (heart) {
+      heart.setAttribute('fill', liked ? 'currentColor' : 'none');
     }
     btn.setAttribute("data-liked", liked ? "true" : "false");
     btn.setAttribute("aria-pressed", liked ? "true" : "false");
+    btn.setAttribute("title", liked ? "Убрать лайк" : "Поставить лайк");
   }
 
   async function toggleLike(btn) {
@@ -69,7 +67,7 @@
         countEl.textContent = data.like_count;
       }
 
-      updateLikeButton(btn, data.liked);
+      updateLikeHeart(btn, data.liked);
       if (data.message) showToast(data.message, false);
     } catch (err) {
       showToast("Ошибка сети. Попробуйте ещё раз.", true);

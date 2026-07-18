@@ -62,18 +62,26 @@
       {% else %}
         <span class="border entropy-border-muted px-3 py-1 text-xs entropy-text-faint">Срок истёк</span>
       {% endif %}
-      <span class="entropy-text-muted">Лайков: <span data-like-count-for="post-{{ post.slug }}">{{ post.like_count }}</span></span>
       {% if user.is_authenticated %}
-        <button
-          type="button"
-          class="entropy-btn px-3 py-1 text-xs font-semibold"
+        <button type="button"
+          class="entropy-text-muted inline-flex items-center gap-1.5 cursor-pointer border-0 bg-transparent p-0 hover:opacity-70 transition-opacity"
           data-like-url="{% url 'forum:toggle_like_post' post.slug %}"
           data-like-id="post-{{ post.slug }}"
           data-liked="{% if liked_post %}true{% else %}false{% endif %}"
-          data-like-label="+ лайк"
-          data-unlike-label="− лайк"
           aria-pressed="{% if liked_post %}true{% else %}false{% endif %}"
-        >{% if liked_post %}− лайк{% else %}+ лайк{% endif %}</button>
+          title="{% if liked_post %}Убрать лайк{% else %}Поставить лайк{% endif %}">
+          <svg class="h-4 w-4 like-heart" viewBox="0 0 24 24" fill="{% if liked_post %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+          <span data-like-count-for="post-{{ post.slug }}">{{ post.like_count }}</span>
+        </button>
+      {% else %}
+        <span class="entropy-text-muted inline-flex items-center gap-1.5">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+          <span>{{ post.like_count }}</span>
+        </span>
       {% endif %}
       {% if can_delete %}
         <form action="{% url 'forum:post_delete' post.slug %}" method="post" class="inline" onsubmit="return confirm('Отправить пост в Кладбище?');">

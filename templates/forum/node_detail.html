@@ -45,16 +45,38 @@
     <div class="mt-6 flex flex-wrap gap-3">
       <a href="{% url 'forum:post_create_in_node' node.slug %}" class="entropy-btn-primary inline-block px-6 py-3 text-sm font-semibold">+ Новый пост</a>
       {% if user.is_authenticated %}
-        <button type="button" id="quick-media-btn" class="entropy-btn inline-block px-6 py-3 text-sm font-semibold">📷 Быстрая публикация</button>
+        <button type="button" id="quick-media-btn" class="entropy-btn inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+            <path stroke-linecap="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Быстрая публикация
+        </button>
         <form action="{% url 'forum:toggle_node_subscription' node.slug %}" method="post">
           {% csrf_token %}
           <button type="submit" class="entropy-btn inline-block px-6 py-3 text-sm font-semibold">
-            {% if is_subscribed %}✓ Отписаться от уведомлений{% else %}+ Следить за узлом{% endif %}
+            {% if is_subscribed %}
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Отписаться от уведомлений
+            {% else %}
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              Следить за узлом
+            {% endif %}
           </button>
         </form>
       {% endif %}
       {% if is_god %}
-        <a href="{% url 'forum:edit_node' node.slug %}" class="entropy-btn inline-block px-6 py-3 text-sm font-semibold">⚙ Редактировать узел</a>
+        <a href="{% url 'forum:edit_node' node.slug %}" class="entropy-btn inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Редактировать узел
+        </a>
       {% endif %}
     </div>
 
@@ -90,7 +112,7 @@
         </div>
         <div>
           <label class="block text-xs font-semibold entropy-text-soft">Заголовок (необязательно)</label>
-          <input type="text" name="title" class="entropy-input w-full text-sm" placeholder="📷 Медиа" maxlength="50">
+          <input type="text" name="title" class="entropy-input w-full text-sm" placeholder="Название медиа" maxlength="50">
         </div>
         <button type="submit" class="entropy-btn-primary px-4 py-2 text-sm font-semibold">Опубликовать</button>
       </form>
@@ -133,14 +155,25 @@
     {# ── Golden post form (только wen3x, привязан к узлу) ── #}
     {% if is_god %}
       <details class="mt-6">
-        <summary class="cursor-pointer text-sm font-bold uppercase tracking-wider text-yellow-500 hover:opacity-80">✨ Создать Золотой пост в этом узле</summary>
+        <summary class="cursor-pointer text-sm font-bold uppercase tracking-wider text-yellow-500 hover:opacity-80 flex items-center gap-2">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l1.5 5.5L19 7l-4.5 3.5L16 16l-4-3-4 3 1.5-5.5L5 7l5.5-.5L12 2z"/>
+            <path d="M12 10l-1 4 1 8 1-8-1-4z" opacity="0.4"/>
+          </svg>
+          Создать Золотой пост в этом узле
+        </summary>
         <form method="post" class="mt-3 border border-dashed border-yellow-400 p-4 post-golden">
           {% csrf_token %}
           <input type="hidden" name="action" value="golden_post_in_node">
           <p class="text-xs entropy-text-faint mb-2">Золотой пост (24ч). Не продлевается. Лайки дают +10 токенов.</p>
           <input type="text" name="golden_title" placeholder="Заголовок" class="entropy-input w-full text-sm" required maxlength="50">
           <textarea name="golden_content" rows="4" placeholder="Текст поста" class="entropy-input mt-2 w-full text-sm" required></textarea>
-          <button type="submit" class="entropy-btn-primary mt-3 px-5 py-2 text-sm font-semibold">✨ Создать Золотой пост</button>
+          <button type="submit" class="entropy-btn-primary mt-3 px-5 py-2 text-sm font-semibold inline-flex items-center gap-2">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l1.5 5.5L19 7l-4.5 3.5L16 16l-4-3-4 3 1.5-5.5L5 7l5.5-.5L12 2z"/>
+            </svg>
+            Создать Золотой пост
+          </button>
         </form>
       </details>
     {% endif %}

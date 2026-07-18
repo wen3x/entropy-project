@@ -26,9 +26,17 @@
               <p class="mt-2 text-sm entropy-text-muted">{{ item.description }}</p>
 
               {% if item.item_type == 'profile_color_basic' and has_basic_colors %}
-                <p class="mt-2 text-xs font-bold uppercase tracking-wide entropy-text-emphasis">✓ Куплено — переключение бесплатно</p>
+                <p class="mt-2 text-xs font-bold uppercase tracking-wide entropy-text-emphasis flex items-center gap-1">
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Куплено — переключение бесплатно</p>
               {% elif item.item_type == 'profile_color_gold' and has_gold_color %}
-                <p class="mt-2 text-xs font-bold uppercase tracking-wide entropy-text-emphasis">✓ Куплено — активация бесплатно</p>
+                <p class="mt-2 text-xs font-bold uppercase tracking-wide entropy-text-emphasis flex items-center gap-1">
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Куплено — активация бесплатно</p>
               {% else %}
                 <p class="mt-3 text-xs font-bold uppercase tracking-wide entropy-text-faint">Цена: {{ item.price_tokens }} токенов</p>
               {% endif %}
