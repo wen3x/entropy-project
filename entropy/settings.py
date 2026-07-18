@@ -40,6 +40,7 @@ MIDDLEWARE = [
     'accounts.middleware.VitalityMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'accounts.middleware.DailyStreakMiddleware',
+    'accounts.middleware.BanMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 

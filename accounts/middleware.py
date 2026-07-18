@@ -1,5 +1,8 @@
+import django.db.utils
+
 from django.contrib import messages
 from django.contrib.auth import logout
+from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -31,6 +34,125 @@ class VitalityMiddleware:
             return redirect(reverse("vitality_expired"))
 
         return self.get_response(request)
+
+
+class BanMiddleware:
+    """Перехватывает POST-запросы на создание контента и проверяет бан.
+    Если пользователь забанен — показывает сообщение и редиректит обратно.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        if not request.user.is_authenticated:
+            return None
+        if request.method != "POST":
+            return None
+
+        url_name = getattr(request.resolver_match, "url_name", None)
+
+        # ── Создание нового поста ──
+        if url_name in ("post_create", "post_create_in_node"):
+            if self._is_banned(request.user):
+                messages.error(
+                    request, "Вы забанены и не можете создавать посты."
+                )
+                return redirect("forum:post_list")
+
+        # ── Быстрая публикация медиа в узле ──
+        elif url_name == "node_detail":
+            action = request.POST.get("action")
+            if action == "quick_media_post":
+                node_slug = view_kwargs.get("node_slug")
+                node = self._resolve_node(node_slug)
+                if node and self._is_banned(request.user, node):
+                    messages.error(
+                        request,
+                        "Вы забанены и не можете писать в этом узле.",
+                    )
+                    return redirect(
+                        "forum:node_detail", node_slug=node_slug
+                    )
+
+        # ── Комментарий к посту (без node_slug в URL) ──
+        elif url_name == "post_detail":
+            slug = view_kwargs.get("slug")
+            post = self._resolve_post(slug)
+            if post and self._is_banned(request.user, post.node):
+                messages.error(
+                    request, "Вы забанены и не можете комментировать."
+                )
+                return redirect("forum:post_detail", slug=slug)
+
+        # ── Комментарий внутри узла ──
+        elif url_name == "post_detail_in_node":
+            post_slug = view_kwargs.get("post_slug")
+            node_slug = view_kwargs.get("node_slug")
+            post = self._resolve_post(post_slug)
+            if post and self._is_banned(request.user, post.node):
+                messages.error(
+                    request, "Вы забанены и не можете комментировать."
+                )
+                return redirect(
+                    "forum:post_detail_in_node",
+                    node_slug=node_slug,
+                    post_slug=post_slug,
+                )
+
+        # ── Редактирование комментария ──
+        elif url_name == "edit_comment":
+            pk = view_kwargs.get("pk")
+            comment = self._resolve_comment(pk)
+            if comment and self._is_banned(request.user, comment.post.node):
+                messages.error(
+                    request,
+                    "Вы забанены и не можете редактировать комментарии.",
+                )
+                return redirect(comment.post.get_absolute_url())
+
+        return None
+
+    # ── Helpers ──────────────────────────────────────────────────────
+
+    def _is_banned(self, user, node=None):
+        """Проверить, есть ли активный бан у пользователя."""
+        try:
+            from accounts.models import Ban
+
+            now = timezone.now()
+            q = Ban.objects.filter(user=user, expires_at__gt=now)
+            if node:
+                q = q.filter(Q(node=node) | Q(node__isnull=True))
+            else:
+                q = q.filter(node__isnull=True)
+            return q.exists()
+        except (django.db.utils.OperationalError, django.db.utils.ProgrammingError):
+            return False
+
+    def _resolve_node(self, slug):
+        from forum.models import Node
+        try:
+            return Node.objects.get(slug=slug, is_active=True)
+        except Node.DoesNotExist:
+            return None
+
+    def _resolve_post(self, slug):
+        from forum.models import Post
+        try:
+            return Post.objects.get(slug=slug)
+        except Post.DoesNotExist:
+            return None
+
+    def _resolve_comment(self, pk):
+        from forum.models import Comment
+        try:
+            return Comment.objects.get(pk=pk)
+        except Comment.DoesNotExist:
+            return None
 
 
 class DailyStreakMiddleware:
