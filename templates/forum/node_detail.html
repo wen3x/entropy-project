@@ -42,6 +42,17 @@
       </div>
     </div>
 
+    {# ── Ban notice for this node ── #}
+    {% if node_ban_info %}
+      <div class="mt-4 entropy-message p-4 text-sm border border-red-400 rounded" style="border-color:#ef4444;color:#ef4444;">
+        <strong>⛔ Вы забанены{% if node_ban_info.type == 'node' %} в этом узле{% else %} глобально{% endif %}</strong>
+        до {{ node_ban_info.expires_at|date:"d.m H:i" }}.
+        {% if node_ban_info.reason %}
+          Причина: {{ node_ban_info.reason }}
+        {% endif %}
+      </div>
+    {% endif %}
+
     <div class="mt-6 flex flex-wrap gap-3">
       <a href="{% url 'forum:post_create_in_node' node.slug %}" class="entropy-btn-primary inline-block px-6 py-3 text-sm font-semibold">+ Новый пост</a>
       {% if user.is_authenticated %}

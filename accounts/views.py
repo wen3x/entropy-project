@@ -330,12 +330,27 @@ def secret_panel(request):
                         return redirect("secret_panel")
                     ban_type = f"узел «{node.name}»"
 
-                Ban.objects.create(
+                ban = Ban.objects.create(
                     user=target_user,
                     node=node,
                     expires_at=timezone.now() + timedelta(hours=duration),
                     reason=request.POST.get("ban_reason", "").strip(),
                 )
+                # Уведомление забаненному
+                expire_str = ban.expires_at.strftime('%d.%m %H:%M')
+                if node:
+                    note_msg = (
+                        f"Вы забанены в узле «{node.name}» до {expire_str}."
+                    )
+                else:
+                    note_msg = (
+                        f"Вы забанены глобально до {expire_str}."
+                    )
+                if ban.reason:
+                    note_msg += f" Причина: {ban.reason}"
+                from accounts.notifications import notify
+                notify(target_user, 'ban', note_msg)
+
                 messages.success(
                     request,
                     f"Пользователь «{target_user.username}» забанен ({ban_type}) на {duration} ч.",

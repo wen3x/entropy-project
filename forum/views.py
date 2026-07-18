@@ -92,12 +92,20 @@ def is_banned(user, node=None) -> bool:
         return False
     try:
         now = timezone.now()
-        q = Ban.objects.filter(user=user, expires_at__gt=now)
         if node:
-            q = q.filter(Q(node=node) | Q(node__isnull=True))
-        else:
-            q = q.filter(node__isnull=True)
-        return q.exists()
+            return Ban.objects.filter(
+                user=user, expires_at__gt=now
+            ).filter(
+                Q(node=node) | Q(node__isnull=True)
+            ).exists()
+        # Глобальный бан: проверяем на уровне Python, т.к. SQL не ловит
+        # битые FK (node удалён, но node_id != NULL).
+        for ban in Ban.objects.filter(
+            user=user, expires_at__gt=now
+        ).select_related('node')[:100]:
+            if ban.node is None:
+                return True
+        return False
     except (django.db.utils.OperationalError, django.db.utils.ProgrammingError):
         # Таблица может не существовать (миграция не применилась)
         return False
@@ -732,10 +740,30 @@ def node_detail(request, node_slug):
 
     # Подписка на узел
     is_subscribed = False
+    node_ban_info = None
     if request.user.is_authenticated:
         is_subscribed = NodeSubscription.objects.filter(
             user=request.user, node=node
         ).exists()
+        # Проверяем бан через Python (ловит и битые FK)
+        now = timezone.now()
+        for ban in Ban.objects.filter(
+            user=request.user, expires_at__gt=now
+        ).select_related('node')[:10]:
+            if ban.node is None:
+                node_ban_info = {
+                    'type': 'global',
+                    'expires_at': ban.expires_at,
+                    'reason': ban.reason,
+                }
+                break
+            elif ban.node == node:
+                node_ban_info = {
+                    'type': 'node',
+                    'expires_at': ban.expires_at,
+                    'reason': ban.reason,
+                }
+                break
 
     # ── Quick media post ──
     if request.method == "POST" and request.POST.get("action") == "quick_media_post":
@@ -823,6 +851,7 @@ def node_detail(request, node_slug):
             "total_likes": total_likes,
             "is_subscribed": is_subscribed,
             "is_god": is_god(request.user),
+            "node_ban_info": node_ban_info,
         },
     )
 

@@ -67,14 +67,39 @@ class BanMiddleware:
 
         # ── Создание нового поста ──
         if url_name in ("post_create", "post_create_in_node"):
+            # Определяем целевой узел
+            node_slug = view_kwargs.get("node_slug")
+            target_node = None
+            if node_slug:
+                target_node = self._resolve_node(node_slug)
+            else:
+                target_node = self._resolve_node("global")
+
+            # Проверяем глобальный бан (Python — ловит битые FK)
             if self._is_banned(request.user):
                 logger.warning(
-                    f"BanMiddleware: ЗАБЛОКИРОВАН {username} на создание поста"
+                    f"BanMiddleware: ЗАБЛОКИРОВАН {username} "
+                    f"(глобальный бан)"
                 )
                 messages.error(
                     request, "Вы забанены и не можете создавать посты."
                 )
                 return redirect("forum:post_list")
+
+            # Проверяем узел-специфичный бан (SQL — для существующих узлов)
+            if target_node and self._is_banned(request.user, target_node):
+                logger.warning(
+                    f"BanMiddleware: ЗАБЛОКИРОВАН {username} "
+                    f"в узле {node_slug or 'global'}"
+                )
+                messages.error(
+                    request,
+                    "Вы забанены в этом узле и не можете создавать здесь посты.",
+                )
+                return redirect(
+                    "forum:node_detail",
+                    node_slug=node_slug or "global",
+                )
 
         # ── Быстрая публикация медиа в узле ──
         elif url_name == "node_detail":
@@ -162,12 +187,19 @@ class BanMiddleware:
             from accounts.models import Ban
 
             now = timezone.now()
-            q = Ban.objects.filter(user=user, expires_at__gt=now)
             if node:
-                q = q.filter(Q(node=node) | Q(node__isnull=True))
-            else:
-                q = q.filter(node__isnull=True)
-            return q.exists()
+                return Ban.objects.filter(
+                    user=user, expires_at__gt=now
+                ).filter(
+                    Q(node=node) | Q(node__isnull=True)
+                ).exists()
+            # Глобальный бан: проверяем Python'ом, иначе битые FK не ловятся
+            for ban in Ban.objects.filter(
+                user=user, expires_at__gt=now
+            ).select_related('node')[:100]:
+                if ban.node is None:
+                    return True
+            return False
         except (django.db.utils.OperationalError, django.db.utils.ProgrammingError):
             return False
 

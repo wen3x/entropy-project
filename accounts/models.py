@@ -247,6 +247,7 @@ class Notification(models.Model):
         QUEST_COMPLETE = "quest_complete", "Квест выполнен"
         NODE_RANDOM_POST = "node_random_post", "Рекомендация поста"
         MENTION = "mention", "Упоминание"
+        BAN = "ban", "Бан"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
