@@ -772,6 +772,18 @@ article {
   display: flex;
   flex-direction: column;
   height: 100%;
+  margin-bottom: 1.25rem; /* fallback если grid не сработал */
+}
+
+/* Убираем двойной отступ когда сетка работает */
+.post-grid > .post-card:last-child {
+  margin-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  .post-grid > .post-card {
+    margin-bottom: 0; /* в сетке отступы через gap */
+  }
 }
 
 .post-card-inner {
