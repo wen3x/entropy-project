@@ -5,49 +5,74 @@ from .models import Comment, Node, Post
 INPUT = "entropy-input w-full px-3 py-2 text-sm"
 
 
+MEDIA_TYPE_CHOICES = [
+    ("", "Без медиа"),
+    ("image", "Изображение"),
+    ("gif", "GIF"),
+    ("audio", "Аудио"),
+]
+
+MEDIA_SOURCE_CHOICES = [
+    ("upload", "Загрузить файл"),
+    ("url", "Вставить ссылку"),
+]
+
+
 class PostForm(forms.ModelForm):
     """Форма создания поста с поддержкой Cloudinary медиа.
-    Поля image_file/audio_file/gif_file — загрузка файлов напрямую в Cloudinary.
-    Поля image/audio/gif — ручной ввод URL (если файл не загружен).
+    Сначала выбирается тип медиа (изображение/GIF/аудио), потом способ (файл/ссылка).
     """
-    image_file = forms.FileField(
+    media_type = forms.ChoiceField(
+        choices=MEDIA_TYPE_CHOICES,
         required=False,
-        label="Изображение",
-        widget=forms.FileInput(attrs={"class": INPUT, "accept": "image/*"}),
+        label="Медиа",
+        widget=forms.Select(attrs={"class": INPUT}),
     )
-    audio_file = forms.FileField(
+    media_source = forms.ChoiceField(
+        choices=MEDIA_SOURCE_CHOICES,
         required=False,
-        label="Аудио",
-        widget=forms.FileInput(attrs={"class": INPUT, "accept": "audio/*"}),
+        label="Способ",
+        widget=forms.Select(attrs={"class": INPUT}),
     )
-    gif_file = forms.FileField(
+    media_file = forms.FileField(
         required=False,
-        label="GIF",
-        widget=forms.FileInput(attrs={"class": INPUT, "accept": "image/gif"}),
+        label="Файл",
+        widget=forms.FileInput(attrs={"class": INPUT}),
+    )
+    media_url = forms.URLField(
+        required=False,
+        label="Ссылка",
+        widget=forms.URLInput(attrs={"class": INPUT, "placeholder": "https://..."}),
     )
 
     class Meta:
         model = Post
-        fields = ("title", "content", "image_file", "image", "audio_file", "audio", "gif_file", "gif")
+        fields = ("title", "content",)
         labels = {
             "title": "Заголовок",
             "content": "Текст",
-            "image": "Или вставьте URL изображения",
-            "audio": "Или вставьте URL аудио",
-            "gif": "Или вставьте URL GIF",
         }
         widgets = {
             "title": forms.TextInput(attrs={"class": INPUT}),
             "content": forms.Textarea(attrs={"rows": 6, "class": INPUT}),
-            "image": forms.URLInput(attrs={"class": INPUT, "placeholder": "https://res.cloudinary.com/.../image.jpg"}),
-            "audio": forms.URLInput(attrs={"class": INPUT, "placeholder": "https://res.cloudinary.com/.../audio.mp3"}),
-            "gif": forms.URLInput(attrs={"class": INPUT, "placeholder": "https://res.cloudinary.com/.../animation.gif"}),
         }
-        help_texts = {
-            "image": "Загрузите файл или вставьте Cloudinary URL",
-            "audio": "Загрузите файл или вставьте Cloudinary URL",
-            "gif": "Загрузите файл или вставьте Cloudinary URL",
-        }
+
+    def clean(self):
+        cleaned = super().clean()
+        media_type = cleaned.get("media_type")
+        media_source = cleaned.get("media_source")
+        media_file = cleaned.get("media_file")
+        media_url = cleaned.get("media_url")
+
+        if media_type:
+            if not media_source:
+                self.add_error("media_source", "Выберите способ: загрузить файл или вставить ссылку.")
+            elif media_source == "upload" and not media_file:
+                self.add_error("media_file", "Загрузите файл или выберите «Вставить ссылку».")
+            elif media_source == "url" and not media_url:
+                self.add_error("media_url", "Вставьте ссылку или выберите «Загрузить файл».")
+
+        return cleaned
 
 
 class NodeForm(forms.ModelForm):

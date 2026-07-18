@@ -345,38 +345,30 @@ def post_create(request, node_slug=None):
             if not post:
                 return redirect(request.META.get("HTTP_REFERER") or "forum:post_list")
 
-            # ── Upload files to Cloudinary AFTER transaction ──
-            # Приоритет: загруженный файл > введённый URL
-            # Если файл загружен — используем его, иначе оставляем то, что в URL-поле
-            image_file = request.FILES.get("image_file")
-            audio_file = request.FILES.get("audio_file")
-            gif_file = request.FILES.get("gif_file")
+            # ── Upload media to Cloudinary AFTER transaction ──
+            media_type = form.cleaned_data.get("media_type")
+            media_source = form.cleaned_data.get("media_source")
+            media_file = request.FILES.get("media_file")
+            media_url = form.cleaned_data.get("media_url", "")
 
-            media_updated = False
-            if image_file:
-                url = upload_to_cloudinary(image_file, "image")
-                if url:
-                    post.image = url
-                    media_updated = True
-                else:
-                    messages.warning(request, "Не удалось загрузить изображение в Cloudinary. Проверьте API-ключи.")
-            if audio_file:
-                url = upload_to_cloudinary(audio_file, "video")
-                if url:
-                    post.audio = url
-                    media_updated = True
-                else:
-                    messages.warning(request, "Не удалось загрузить аудио в Cloudinary. Проверьте API-ключи.")
-            if gif_file:
-                url = upload_to_cloudinary(gif_file, "image")
-                if url:
-                    post.gif = url
-                    media_updated = True
-                else:
-                    messages.warning(request, "Не удалось загрузить GIF в Cloudinary. Проверьте API-ключи.")
+            final_url = ""
+            if media_type and media_file:
+                resource_type = "video" if media_type == "audio" else "image"
+                final_url = upload_to_cloudinary(media_file, resource_type)
+                if not final_url:
+                    messages.warning(request, "Не удалось загрузить медиа в Cloudinary. Проверьте API-ключи.")
+            elif media_type and media_source == "url" and media_url:
+                final_url = media_url
 
-            if media_updated:
-                post.save(update_fields=["image", "audio", "gif"])
+            if final_url and media_type == "image":
+                post.image = final_url
+                post.save(update_fields=["image"])
+            elif final_url and media_type == "gif":
+                post.gif = final_url
+                post.save(update_fields=["gif"])
+            elif final_url and media_type == "audio":
+                post.audio = final_url
+                post.save(update_fields=["audio"])
 
             return redirect(post.get_absolute_url())
     else:
@@ -695,8 +687,60 @@ def node_detail(request, node_slug):
             user=request.user, node=node
         ).exists()
 
+    # ── Quick media post ──
+    if request.method == "POST" and request.POST.get("action") == "quick_media_post":
+        if request.user.is_authenticated:
+            User = get_user_model()
+            title = request.POST.get("title", "").strip() or "📷 Медиа"
+            content = request.POST.get("content", "").strip()
+            media_file = request.FILES.get("media_file")
+            media_url = request.POST.get("media_url", "").strip()
+            media_type = request.POST.get("media_type", "")
+
+            if media_file or media_url:
+                with transaction.atomic():
+                    locked = User.objects.select_for_update().get(pk=request.user.pk)
+                    cost = POST_CREATION_COST if not locked.has_free_post else 0
+                    if locked.tokens < cost:
+                        messages.error(request, f"Недостаточно токенов.")
+                    else:
+                        updates = {"vitality_expires_at": F("vitality_expires_at") + timedelta(days=7)}
+                        if locked.has_free_post:
+                            updates["has_free_post"] = False
+                        elif cost:
+                            updates["tokens"] = F("tokens") - cost
+                        User.objects.filter(pk=locked.pk).update(**updates)
+
+                        post = Post.objects.create(
+                            author=request.user,
+                            node=node,
+                            title=title,
+                            content=content,
+                        )
+
+                        final_url = ""
+                        if media_file:
+                            resource_type = "video" if media_type == "audio" else "image"
+                            final_url = upload_to_cloudinary(media_file, resource_type)
+                        elif media_url:
+                            final_url = media_url
+
+                        if final_url:
+                            if media_type == "image":
+                                post.image = final_url
+                            elif media_type == "gif":
+                                post.gif = final_url
+                            elif media_type == "audio":
+                                post.audio = final_url
+                            post.save(update_fields=["image", "audio", "gif"])
+
+                        messages.success(request, "Пост опубликован!")
+                        return redirect(post.get_absolute_url())
+            else:
+                messages.error(request, "Добавьте файл или ссылку.")
+        return redirect("forum:node_detail", node_slug=node.slug)
+
     # ── Golden post creation (только wen3x, с привязкой к узлу) ──
-    golden_post_created = False
     if request.method == "POST" and request.POST.get("action") == "golden_post_in_node":
         if is_god(request.user):
             title = request.POST.get("golden_title", "").strip()
@@ -710,13 +754,12 @@ def node_detail(request, node_slug):
                     is_golden=True,
                 )
                 messages.success(request, f"Золотой пост «{title}» создан в узле «{node.name}».")
-                golden_post_created = True
+                return redirect("forum:node_detail", node_slug=node.slug)
             else:
                 messages.error(request, "Укажите заголовок и текст Золотого поста.")
         else:
             messages.error(request, "Только wen3x может создавать Золотые посты.")
-        if golden_post_created:
-            return redirect("forum:node_detail", node_slug=node.slug)
+        return redirect("forum:node_detail", node_slug=node.slug)
 
     return render(
         request,

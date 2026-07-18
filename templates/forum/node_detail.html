@@ -45,6 +45,7 @@
     <div class="mt-6 flex flex-wrap gap-3">
       <a href="{% url 'forum:post_create_in_node' node.slug %}" class="entropy-btn-primary inline-block px-6 py-3 text-sm font-semibold">+ Новый пост</a>
       {% if user.is_authenticated %}
+        <button type="button" id="quick-media-btn" class="entropy-btn inline-block px-6 py-3 text-sm font-semibold">📷 Быстрая публикация</button>
         <form action="{% url 'forum:toggle_node_subscription' node.slug %}" method="post">
           {% csrf_token %}
           <button type="submit" class="entropy-btn inline-block px-6 py-3 text-sm font-semibold">
@@ -56,6 +57,78 @@
         <a href="{% url 'forum:edit_node' node.slug %}" class="entropy-btn inline-block px-6 py-3 text-sm font-semibold">⚙ Редактировать узел</a>
       {% endif %}
     </div>
+
+    {# ── Quick media post form (hidden, shown on button click) ── #}
+    {% if user.is_authenticated %}
+    <div id="quick-media-form" class="mt-6 border entropy-border p-4" style="display:none;">
+      <p class="text-sm font-bold mb-3">Быстрая публикация медиа</p>
+      <form method="post" enctype="multipart/form-data" class="space-y-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="quick_media_post">
+        <div>
+          <label class="block text-xs font-semibold entropy-text-soft">Тип</label>
+          <select name="media_type" id="qm-media-type" class="entropy-input w-full text-sm" required>
+            <option value="image">Изображение</option>
+            <option value="gif">GIF</option>
+            <option value="audio">Аудио</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold entropy-text-soft">Способ</label>
+          <select name="media_source" id="qm-media-source" class="entropy-input w-full text-sm">
+            <option value="upload">Загрузить файл</option>
+            <option value="url">Вставить ссылку</option>
+          </select>
+        </div>
+        <div id="qm-file-group">
+          <label class="block text-xs font-semibold entropy-text-soft">Файл</label>
+          <input type="file" name="media_file" id="qm-media-file" class="entropy-input w-full text-sm">
+        </div>
+        <div id="qm-url-group" style="display:none;">
+          <label class="block text-xs font-semibold entropy-text-soft">Ссылка</label>
+          <input type="url" name="media_url" class="entropy-input w-full text-sm" placeholder="https://res.cloudinary.com/...">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold entropy-text-soft">Заголовок (необязательно)</label>
+          <input type="text" name="title" class="entropy-input w-full text-sm" placeholder="📷 Медиа" maxlength="50">
+        </div>
+        <button type="submit" class="entropy-btn-primary px-4 py-2 text-sm font-semibold">Опубликовать</button>
+      </form>
+    </div>
+
+    <script>
+    (function() {
+      var btn = document.getElementById('quick-media-btn');
+      var form = document.getElementById('quick-media-form');
+      if (btn && form) {
+        btn.addEventListener('click', function() {
+          form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        });
+      }
+      var typeEl = document.getElementById('qm-media-type');
+      var sourceEl = document.getElementById('qm-media-source');
+      var fileGroup = document.getElementById('qm-file-group');
+      var urlGroup = document.getElementById('qm-url-group');
+      var fileInput = document.getElementById('qm-media-file');
+      if (typeEl && sourceEl) {
+        function updateUI() {
+          var type = typeEl.value;
+          if (fileInput) {
+            if (type === 'image') fileInput.setAttribute('accept', 'image/*');
+            else if (type === 'gif') fileInput.setAttribute('accept', 'image/gif');
+            else if (type === 'audio') fileInput.setAttribute('accept', 'audio/*');
+          }
+          var source = sourceEl.value;
+          fileGroup.style.display = source === 'upload' ? 'block' : 'none';
+          urlGroup.style.display = source === 'url' ? 'block' : 'none';
+        }
+        typeEl.addEventListener('change', updateUI);
+        sourceEl.addEventListener('change', updateUI);
+        updateUI();
+      }
+    })();
+    </script>
+    {% endif %}
 
     {# ── Golden post form (только wen3x, привязан к узлу) ── #}
     {% if is_god %}

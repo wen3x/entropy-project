@@ -21,21 +21,61 @@
 
     <form method="post" enctype="multipart/form-data" class="mt-8 space-y-6">
       {% csrf_token %}
-      {% for field in form %}
-        <div>
-          <div class="flex items-baseline justify-between">
-            <label for="{{ field.id_for_label }}" class="block text-sm font-semibold entropy-text-soft">{{ field.label }}</label>
-            {% if field.html_name == 'title' %}
-              <span class="text-xs entropy-text-subtle" id="title-counter">0&nbsp;/&nbsp;50</span>
-            {% endif %}
-          </div>
-          <div class="mt-1">{{ field }}</div>
-          {% if field.help_text %}
-            <p class="mt-1 text-xs entropy-text-subtle">{{ field.help_text }}</p>
-          {% endif %}
-          {% if field.errors %}<p class="mt-1 text-sm font-medium entropy-text-soft">{{ field.errors.0 }}</p>{% endif %}
+      
+      {# Title #}
+      <div>
+        <div class="flex items-baseline justify-between">
+          <label for="id_title" class="block text-sm font-semibold entropy-text-soft">Заголовок</label>
+          <span class="text-xs entropy-text-subtle" id="title-counter">0&nbsp;/&nbsp;50</span>
         </div>
-      {% endfor %}
+        <input type="text" name="title" maxlength="50" required id="id_title"
+               class="entropy-input w-full px-3 py-2 text-sm" value="{{ form.title.value|default:'' }}">
+        {% if form.title.errors %}<p class="mt-1 text-sm font-medium entropy-text-soft">{{ form.title.errors.0 }}</p>{% endif %}
+      </div>
+
+      {# Content #}
+      <div>
+        <label for="id_content" class="block text-sm font-semibold entropy-text-soft">Текст</label>
+        <textarea name="content" rows="6" id="id_content"
+                  class="entropy-input w-full px-3 py-2 text-sm">{{ form.content.value|default:'' }}</textarea>
+        {% if form.content.errors %}<p class="mt-1 text-sm font-medium entropy-text-soft">{{ form.content.errors.0 }}</p>{% endif %}
+      </div>
+
+      {# Media type selector #}
+      <div>
+        <label for="id_media_type" class="block text-sm font-semibold entropy-text-soft">Медиа</label>
+        <select name="media_type" id="id_media_type" class="entropy-input w-full px-3 py-2 text-sm">
+          <option value="">Без медиа</option>
+          <option value="image" {% if form.media_type.value == 'image' %}selected{% endif %}>Изображение</option>
+          <option value="gif" {% if form.media_type.value == 'gif' %}selected{% endif %}>GIF</option>
+          <option value="audio" {% if form.media_type.value == 'audio' %}selected{% endif %}>Аудио</option>
+        </select>
+      </div>
+
+      {# Media source + file/url (hidden by default) #}
+      <div id="media-options" class="space-y-4" style="display:none;">
+        <div>
+          <label for="id_media_source" class="block text-sm font-semibold entropy-text-soft">Способ</label>
+          <select name="media_source" id="id_media_source" class="entropy-input w-full px-3 py-2 text-sm">
+            <option value="upload" {% if form.media_source.value == 'upload' %}selected{% endif %}>Загрузить файл</option>
+            <option value="url" {% if form.media_source.value == 'url' %}selected{% endif %}>Вставить ссылку</option>
+          </select>
+        </div>
+
+        <div id="media-file-group">
+          <label for="id_media_file" class="block text-sm font-semibold entropy-text-soft">Файл</label>
+          <input type="file" name="media_file" id="id_media_file" class="entropy-input w-full px-3 py-2 text-sm">
+          {% if form.media_file.errors %}<p class="mt-1 text-sm font-medium entropy-text-soft">{{ form.media_file.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div id="media-url-group" style="display:none;">
+          <label for="id_media_url" class="block text-sm font-semibold entropy-text-soft">Ссылка</label>
+          <input type="url" name="media_url" id="id_media_url" class="entropy-input w-full px-3 py-2 text-sm"
+                 placeholder="https://res.cloudinary.com/..." value="{{ form.media_url.value|default:'' }}">
+          {% if form.media_url.errors %}<p class="mt-1 text-sm font-medium entropy-text-soft">{{ form.media_url.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+
       <div class="flex gap-3">
         <button type="submit" class="entropy-btn-primary px-5 py-2.5 text-sm font-semibold">Опубликовать</button>
         <a href="{% if node %}{% url 'forum:node_detail' node.slug %}{% else %}{% url 'forum:post_list' %}{% endif %}" class="entropy-btn px-5 py-2.5 text-sm font-semibold">Отмена</a>
@@ -46,19 +86,71 @@
 
 {% block extra_js %}
 <script>
-  (function() {
-    var input = document.getElementById('id_title');
-    var counter = document.getElementById('title-counter');
-    if (!input || !counter) return;
+(function() {
+  // Title counter
+  var input = document.getElementById('id_title');
+  var counter = document.getElementById('title-counter');
+  if (input && counter) {
     function update() {
       var len = input.value.length;
       counter.textContent = len + '\u00a0/\u00a050';
-      if (len >= 50) { counter.style.color = '#ef4444'; }
-      else if (len >= 45) { counter.style.color = '#facc15'; }
-      else { counter.style.color = ''; }
+      if (len >= 50) counter.style.color = '#ef4444';
+      else if (len >= 45) counter.style.color = '#facc15';
+      else counter.style.color = '';
     }
     input.addEventListener('input', update);
     update();
-  })();
+  }
+
+  // Media type → show/hide media options
+  var mediaType = document.getElementById('id_media_type');
+  var mediaOptions = document.getElementById('media-options');
+  var mediaSource = document.getElementById('id_media_source');
+  var mediaFileGroup = document.getElementById('media-file-group');
+  var mediaUrlGroup = document.getElementById('media-url-group');
+  var mediaFileInput = document.getElementById('id_media_file');
+  var mediaUrlInput = document.getElementById('id_media_url');
+
+  function updateMediaUI() {
+    var type = mediaType.value;
+    if (type) {
+      mediaOptions.style.display = 'block';
+      // Update accept attribute based on type
+      if (type === 'image') {
+        mediaFileInput.setAttribute('accept', 'image/*');
+      } else if (type === 'gif') {
+        mediaFileInput.setAttribute('accept', 'image/gif');
+      } else if (type === 'audio') {
+        mediaFileInput.setAttribute('accept', 'audio/*');
+      }
+    } else {
+      mediaOptions.style.display = 'none';
+    }
+    updateSourceUI();
+  }
+
+  function updateSourceUI() {
+    var source = mediaSource.value;
+    if (source === 'upload') {
+      mediaFileGroup.style.display = 'block';
+      mediaUrlGroup.style.display = 'none';
+      mediaFileInput.required = mediaType.value ? true : false;
+      mediaUrlInput.required = false;
+    } else {
+      mediaFileGroup.style.display = 'none';
+      mediaUrlGroup.style.display = 'block';
+      mediaFileInput.required = false;
+      mediaUrlInput.required = mediaType.value ? true : false;
+    }
+  }
+
+  if (mediaType) {
+    mediaType.addEventListener('change', updateMediaUI);
+    updateMediaUI();
+  }
+  if (mediaSource) {
+    mediaSource.addEventListener('change', updateSourceUI);
+  }
+})();
 </script>
 {% endblock %}
