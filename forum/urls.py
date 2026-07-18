@@ -18,6 +18,7 @@ urlpatterns = [
     path("nodes/", views.node_list, name="node_list"),
     path("nodes/create/", views.create_node, name="create_node"),
     path("n/<slug:node_slug>/", views.node_detail, name="node_detail"),
+    path("n/<slug:node_slug>/edit/", views.edit_node, name="edit_node"),
     path("n/<slug:node_slug>/subscribe/", views.toggle_node_subscription, name="toggle_node_subscription"),
     path("n/<slug:node_slug>/new/", views.post_create, name="post_create_in_node"),
     path("n/<slug:node_slug>/<slug:post_slug>/", views.post_detail_in_node, name="post_detail_in_node"),

@@ -19,7 +19,7 @@
       Публикация продлевает срок жизни аккаунта на 7 дней.
     </p>
 
-    <form method="post" class="mt-8 space-y-6">
+    <form method="post" enctype="multipart/form-data" class="mt-8 space-y-6">
       {% csrf_token %}
       {% for field in form %}
         <div>
@@ -30,6 +30,9 @@
             {% endif %}
           </div>
           <div class="mt-1">{{ field }}</div>
+          {% if field.help_text %}
+            <p class="mt-1 text-xs entropy-text-subtle">{{ field.help_text }}</p>
+          {% endif %}
           {% if field.errors %}<p class="mt-1 text-sm font-medium entropy-text-soft">{{ field.errors.0 }}</p>{% endif %}
         </div>
       {% endfor %}

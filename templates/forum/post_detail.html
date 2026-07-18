@@ -20,6 +20,7 @@
 
 {% block content %}
   <article class="entropy-card p-4 sm:p-8 {% if post.is_golden %}post-golden{% endif %}">
+    {# Meta row #}
     <p class="text-xs entropy-text-faint">
       <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ post.author.username }}</a>
       {% if post.is_golden %}<span class="ml-2 border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-yellow-500">Золотой пост · 24ч</span>{% endif %}
@@ -28,8 +29,29 @@
       {% endif %}
       &middot; {{ post.created_at|date:"d.m.Y H:i" }}
     </p>
+
+    {# Title #}
     <h1 class="mt-2 text-3xl font-extrabold uppercase tracking-tight">{{ post.title }}</h1>
 
+    {# Media: image / gif / audio #}
+    <div class="post-media post-media--detail mt-4">
+      {% if post.image %}
+        <img src="{{ post.image }}" alt="" class="post-media-img post-media-img--full" loading="lazy" onclick="window.open(this.src,'_blank')">
+      {% endif %}
+      {% if post.gif %}
+        <img src="{{ post.gif }}" alt="" class="post-media-img post-media-img--full" loading="lazy" onclick="window.open(this.src,'_blank')">
+      {% endif %}
+      {% if post.audio %}
+        <audio controls class="post-media-audio w-full" preload="none">
+          <source src="{{ post.audio }}">
+        </audio>
+      {% endif %}
+    </div>
+
+    {# Content #}
+    <div class="mt-6 whitespace-pre-wrap entropy-text-soft">{{ post.content }}</div>
+
+    {# Actions row #}
     <div class="mt-4 flex flex-wrap items-center gap-3 text-sm">
       {% if post.expires_at > now %}
         <div class="countdown-pill border entropy-border px-3 py-1 text-xs font-bold uppercase tracking-wide" data-role="expire-pill">
@@ -58,9 +80,16 @@
           <button type="submit" class="entropy-btn-invert px-3 py-1 text-xs font-semibold">Удалить</button>
         </form>
       {% endif %}
+      {% if is_god and not post.is_golden %}
+        <form action="{% url 'forum:toggle_pin_post' post.slug %}" method="post" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="entropy-btn px-3 py-1 text-xs font-semibold">
+            {% if post.is_pinned %}Открепить{% else %}Закрепить{% endif %}
+          </button>
+        </form>
+      {% endif %}
     </div>
 
-    <div class="mt-6 whitespace-pre-wrap entropy-text-soft">{{ post.content }}</div>
     {% if post.is_golden %}
       <p class="mt-4 text-xs entropy-text-faint">Золотой пост: время не продлевается. Лайк = +10 токенов (один раз).</p>
     {% endif %}
@@ -136,7 +165,6 @@ document.addEventListener('click', function (e) {
   var text = btn.getAttribute('data-comment-text');
   var parent = btn.closest('.flex.gap-1');
   if (!parent) return;
-  // Replace button group with edit form
   parent.innerHTML = '<form method="post" action="{% url 'forum:edit_comment' 0 %}" class="flex gap-2">'.replace('/comment/0/', '/comment/' + pk + '/') +
     '{% csrf_token %}' +
     '<input type="text" name="text" value="' + text.replace(/"/g, '&quot;') + '" maxlength="2000" class="entropy-input flex-1 text-xs" required>' +

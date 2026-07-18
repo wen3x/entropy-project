@@ -16,6 +16,11 @@ class PostAdmin(admin.ModelAdmin):
     search_fields = ("title", "slug", "content")
     readonly_fields = ("slug",)
     inlines = [CommentInline]
+    fieldsets = (
+        (None, {"fields": ("title", "slug", "content", "author", "node")}),
+        ("Cloudinary медиа", {"fields": ("image", "audio", "gif"), "classes": ("collapse",)}),
+        ("Статус", {"fields": ("is_active", "is_golden", "is_pinned", "expires_at")}),
+    )
 
 
 @admin.register(Comment)
@@ -31,6 +36,11 @@ class NodeAdmin(admin.ModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("slug", "name", "description")
     prepopulated_fields = {"slug": ("name",)}
+    fieldsets = (
+        (None, {"fields": ("slug", "name", "description", "created_by")}),
+        ("Изображения узла", {"fields": ("avatar", "header"), "classes": ("collapse",)}),
+        ("Статус", {"fields": ("is_active",)}),
+    )
 
 
 @admin.register(Like)

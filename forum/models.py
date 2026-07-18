@@ -26,6 +26,9 @@ class Node(models.Model):
     slug = models.SlugField(max_length=32, unique=True, db_index=True)
     name = models.CharField(max_length=64)
     description = models.TextField(blank=True, default="")
+    # Cloudinary media for node
+    avatar = models.CharField(max_length=1024, blank=True, default="")
+    header = models.CharField(max_length=1024, blank=True, default="")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -62,6 +65,10 @@ class Post(models.Model):
     slug = models.CharField(max_length=11, unique=True, db_index=True, blank=True)
     title = models.CharField(max_length=50)
     content = models.TextField()
+    # Cloudinary media
+    image = models.CharField(max_length=1024, blank=True, default="")
+    audio = models.CharField(max_length=1024, blank=True, default="")
+    gif = models.CharField(max_length=1024, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(default=default_post_expires)
     is_active = models.BooleanField(default=True, db_index=True)

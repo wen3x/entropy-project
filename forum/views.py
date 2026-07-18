@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -26,7 +27,7 @@ from accounts.quests import (
     on_post_life_extended,
 )
 
-from .forms import CommentForm, PostForm
+from .forms import CommentForm, NodeForm, PostForm
 from .models import Comment, Like, Node, Post
 from .rate_limit import allow_like, deny_like_message
 
@@ -34,6 +35,22 @@ POST_CREATION_COST = 25
 ACTIVE_LIKE = Q(likes__is_active=True)
 GOLDEN_LIKE_REWARD = 10
 APPROVAL_REWARD = 100
+
+
+def upload_to_cloudinary(file_obj, resource_type="auto"):
+    """Загрузить файл в Cloudinary, вернуть secure_url или пустую строку."""
+    if not file_obj:
+        return None
+    try:
+        import cloudinary.uploader
+        result = cloudinary.uploader.upload(file_obj, resource_type=resource_type)
+        return result.get("secure_url", "")
+    except ImportError:
+        # Cloudinary не установлен
+        return None
+    except Exception:
+        # Любая ошибка Cloudinary
+        return None
 
 
 def is_god(user) -> bool:
@@ -278,7 +295,8 @@ def _post_detail_view(request, slug, node=None):
 @login_required
 @require_http_methods(["GET", "POST"])
 def post_create(request, node_slug=None):
-    """Создание поста. Если передан node_slug, пост привязывается к узлу."""
+    """Создание поста. Если передан node_slug, пост привязывается к узлу.
+    Поддерживает загрузку изображений, аудио и GIF в Cloudinary."""
     node = None
     if node_slug:
         node = get_object_or_404(Node, slug=node_slug, is_active=True)
@@ -287,9 +305,10 @@ def post_create(request, node_slug=None):
         node = Node.objects.filter(slug="global", is_active=True).first()
 
     if request.method == "POST":
-        form = PostForm(request.POST)
+        form = PostForm(request.POST, request.FILES)
         if form.is_valid():
             User = get_user_model()
+            post = None
             with transaction.atomic():
                 locked = User.objects.select_for_update().get(pk=request.user.pk)
                 use_free = locked.has_free_post
@@ -316,12 +335,50 @@ def post_create(request, node_slug=None):
                     if node:
                         post.node = node
                     post.save()
+
                     if use_free:
                         messages.success(
                             request,
                             "Использован бесплатный пост (награда 7-го дня стрика).",
                         )
-                    return redirect(post.get_absolute_url())
+
+            if not post:
+                return redirect(request.META.get("HTTP_REFERER") or "forum:post_list")
+
+            # ── Upload files to Cloudinary AFTER transaction ──
+            # Приоритет: загруженный файл > введённый URL
+            # Если файл загружен — используем его, иначе оставляем то, что в URL-поле
+            image_file = request.FILES.get("image_file")
+            audio_file = request.FILES.get("audio_file")
+            gif_file = request.FILES.get("gif_file")
+
+            media_updated = False
+            if image_file:
+                url = upload_to_cloudinary(image_file, "image")
+                if url:
+                    post.image = url
+                    media_updated = True
+                else:
+                    messages.warning(request, "Не удалось загрузить изображение в Cloudinary. Проверьте API-ключи.")
+            if audio_file:
+                url = upload_to_cloudinary(audio_file, "video")
+                if url:
+                    post.audio = url
+                    media_updated = True
+                else:
+                    messages.warning(request, "Не удалось загрузить аудио в Cloudinary. Проверьте API-ключи.")
+            if gif_file:
+                url = upload_to_cloudinary(gif_file, "image")
+                if url:
+                    post.gif = url
+                    media_updated = True
+                else:
+                    messages.warning(request, "Не удалось загрузить GIF в Cloudinary. Проверьте API-ключи.")
+
+            if media_updated:
+                post.save(update_fields=["image", "audio", "gif"])
+
+            return redirect(post.get_absolute_url())
     else:
         form = PostForm()
 
@@ -638,6 +695,29 @@ def node_detail(request, node_slug):
             user=request.user, node=node
         ).exists()
 
+    # ── Golden post creation (только wen3x, с привязкой к узлу) ──
+    golden_post_created = False
+    if request.method == "POST" and request.POST.get("action") == "golden_post_in_node":
+        if is_god(request.user):
+            title = request.POST.get("golden_title", "").strip()
+            content = request.POST.get("golden_content", "").strip()
+            if title and content:
+                Post.objects.create(
+                    author=request.user,
+                    node=node,
+                    title=title,
+                    content=content,
+                    is_golden=True,
+                )
+                messages.success(request, f"Золотой пост «{title}» создан в узле «{node.name}».")
+                golden_post_created = True
+            else:
+                messages.error(request, "Укажите заголовок и текст Золотого поста.")
+        else:
+            messages.error(request, "Только wen3x может создавать Золотые посты.")
+        if golden_post_created:
+            return redirect("forum:node_detail", node_slug=node.slug)
+
     return render(
         request,
         "forum/node_detail.html",
@@ -681,6 +761,8 @@ def create_node(request):
         slug = request.POST.get("slug", "").strip().lower()
         name = request.POST.get("name", "").strip()
         description = request.POST.get("description", "").strip()
+        avatar = request.POST.get("avatar", "").strip()
+        header = request.POST.get("header", "").strip()
         if slug and name:
             if Node.objects.filter(slug=slug).exists():
                 messages.error(request, f"Узел с таким URL уже существует: /n/{slug}/")
@@ -689,6 +771,8 @@ def create_node(request):
                     slug=slug,
                     name=name,
                     description=description,
+                    avatar=avatar,
+                    header=header,
                     created_by=request.user,
                 )
                 messages.success(request, f"Узел «{name}» создан: /n/{slug}/")
@@ -698,6 +782,31 @@ def create_node(request):
         return redirect("forum:create_node")
 
     return render(request, "forum/node_form.html", {"is_god": is_god(request.user)})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def edit_node(request, node_slug):
+    """Редактирование узла (только wen3x)."""
+    if not is_god(request.user):
+        return HttpResponseForbidden("Доступ запрещён.")
+
+    node = get_object_or_404(Node, slug=node_slug)
+
+    if request.method == "POST":
+        form = NodeForm(request.POST, instance=node)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Узел «{node.name}» обновлён.")
+            return redirect("forum:node_detail", node_slug=node.slug)
+    else:
+        form = NodeForm(instance=node)
+
+    return render(
+        request,
+        "forum/node_form.html",
+        {"form": form, "is_god": is_god(request.user), "editing": True, "node": node},
+    )
 
 
 # ── SEARCH ────────────────────────────────────────────────────────────────────

@@ -10,19 +10,38 @@
 
 {% block content %}
   <div class="mb-8 border-b entropy-border pb-6">
-    <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">
-      <a href="{% url 'forum:node_list' %}" class="hover:underline">Узлы</a>
-      &middot; {{ node.created_at|date:"d.m.Y" }}
-    </p>
-    <h1 class="mt-2 text-3xl font-extrabold uppercase tracking-tight">{{ node.name }}</h1>
-    <p class="mt-2 text-sm entropy-text-muted">/n/{{ node.slug }}</p>
-    {% if node.description %}
-      <p class="mt-2 text-sm entropy-text-muted">{{ node.description }}</p>
+    {# Node header image #}
+    {% if node.header %}
+      <div class="node-header mb-4">
+        <img src="{{ node.header }}" alt="" class="w-full object-cover max-h-48 entropy-border" loading="lazy">
+      </div>
     {% endif %}
-    <div class="mt-3 flex gap-4 text-xs entropy-text-faint">
-      <span>{{ total_posts }} постов</span>
-      <span>{{ total_likes }} лайков</span>
+
+    <div class="flex flex-wrap items-start gap-4">
+      {# Node avatar #}
+      {% if node.avatar %}
+        <div class="node-avatar shrink-0">
+          <img src="{{ node.avatar }}" alt="" class="w-16 h-16 sm:w-20 sm:h-20 object-cover entropy-border" loading="lazy">
+        </div>
+      {% endif %}
+
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">
+          <a href="{% url 'forum:node_list' %}" class="hover:underline">Узлы</a>
+          &middot; {{ node.created_at|date:"d.m.Y" }}
+        </p>
+        <h1 class="mt-2 text-3xl font-extrabold uppercase tracking-tight">{{ node.name }}</h1>
+        <p class="mt-1 text-sm entropy-text-muted">/n/{{ node.slug }}</p>
+        {% if node.description %}
+          <p class="mt-2 text-sm entropy-text-muted">{{ node.description }}</p>
+        {% endif %}
+        <div class="mt-3 flex gap-4 text-xs entropy-text-faint">
+          <span>{{ total_posts }} постов</span>
+          <span>{{ total_likes }} лайков</span>
+        </div>
+      </div>
     </div>
+
     <div class="mt-6 flex flex-wrap gap-3">
       <a href="{% url 'forum:post_create_in_node' node.slug %}" class="entropy-btn-primary inline-block px-6 py-3 text-sm font-semibold">+ Новый пост</a>
       {% if user.is_authenticated %}
@@ -33,7 +52,25 @@
           </button>
         </form>
       {% endif %}
+      {% if is_god %}
+        <a href="{% url 'forum:edit_node' node.slug %}" class="entropy-btn inline-block px-6 py-3 text-sm font-semibold">⚙ Редактировать узел</a>
+      {% endif %}
     </div>
+
+    {# ── Golden post form (только wen3x, привязан к узлу) ── #}
+    {% if is_god %}
+      <details class="mt-6">
+        <summary class="cursor-pointer text-sm font-bold uppercase tracking-wider text-yellow-500 hover:opacity-80">✨ Создать Золотой пост в этом узле</summary>
+        <form method="post" class="mt-3 border border-dashed border-yellow-400 p-4 post-golden">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="golden_post_in_node">
+          <p class="text-xs entropy-text-faint mb-2">Золотой пост (24ч). Не продлевается. Лайки дают +10 токенов.</p>
+          <input type="text" name="golden_title" placeholder="Заголовок" class="entropy-input w-full text-sm" required maxlength="50">
+          <textarea name="golden_content" rows="4" placeholder="Текст поста" class="entropy-input mt-2 w-full text-sm" required></textarea>
+          <button type="submit" class="entropy-btn-primary mt-3 px-5 py-2 text-sm font-semibold">✨ Создать Золотой пост</button>
+        </form>
+      </details>
+    {% endif %}
   </div>
 
   {% if not posts %}
@@ -42,32 +79,49 @@
     </p>
   {% endif %}
 
-  <div class="space-y-4">
+  {# ── Two-column post grid on desktop, single column on mobile ── #}
+  <div class="post-grid">
     {% for post in posts %}
       <article class="entropy-card post-card p-4 sm:p-6 {% if post.is_golden %}post-golden{% elif post.is_pinned %}post-pinned{% endif %}" data-expires="{{ post.expires_at.isoformat }}" style="position:relative;">
-        <div class="flex flex-col gap-3 post-card-inner sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
-          <div class="min-w-0 flex-1" style="overflow:hidden;min-width:0;">
-            <p class="text-xs entropy-text-faint">
-              <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ post.author.username }}</a>
-              {% if post.is_golden %}
-                <span class="ml-2 border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-yellow-500">Золотой</span>
-              {% elif post.is_pinned %}
-                <span class="ml-2 border entropy-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest">Закреплён</span>
-              {% endif %}
-              &middot; {{ post.created_at|date:"d.m.Y H:i" }}
-            </p>
-            <h2 class="mt-2 text-xl font-bold post-card-title" style="overflow:hidden;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">
-              <a href="{% url 'forum:post_detail_in_node' node.slug post.slug %}" class="post-card-link">{{ post.title }}</a>
-            </h2>
-            <p class="mt-3 text-sm entropy-text-soft post-card-content" style="word-break:break-all;">{{ post.content|truncatechars:100 }}</p>
+        <div class="post-card-inner">
+          <p class="text-xs entropy-text-faint post-meta">
+            <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>{{ post.author.username }}</a>
+            {% if post.is_golden %}
+              <span class="ml-2 border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-yellow-500">Золотой</span>
+            {% elif post.is_pinned %}
+              <span class="ml-2 border entropy-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest">Закреплён</span>
+            {% endif %}
+            &middot; {{ post.created_at|date:"d.m.Y H:i" }}
+          </p>
+
+          <h2 class="mt-2 text-xl font-bold post-card-title">
+            <a href="{% url 'forum:post_detail_in_node' node.slug post.slug %}" class="post-card-link">{{ post.title }}</a>
+          </h2>
+
+          {# Media: image / gif / audio #}
+          <div class="post-media mt-3">
+            {% if post.image %}
+              <img src="{{ post.image }}" alt="" class="post-media-img" loading="lazy" onclick="window.open(this.src,'_blank')">
+            {% endif %}
+            {% if post.gif %}
+              <img src="{{ post.gif }}" alt="" class="post-media-img" loading="lazy" onclick="window.open(this.src,'_blank')">
+            {% endif %}
+            {% if post.audio %}
+              <audio controls class="post-media-audio" preload="none">
+                <source src="{{ post.audio }}">
+              </audio>
+            {% endif %}
           </div>
-          <div class="flex shrink-0 flex-row flex-wrap items-center gap-2 text-sm sm:flex-col sm:items-end sm:text-right">
+
+          <p class="mt-3 text-sm entropy-text-soft post-card-content">{{ post.content|truncatechars:100 }}</p>
+
+          <div class="post-actions">
             <div class="countdown-pill border entropy-border px-3 py-1 text-xs font-bold uppercase tracking-wide" data-role="expire-pill">
               <span class="entropy-text-muted">Осталось: </span>
               <span class="countdown tabular-nums" data-expires="{{ post.expires_at.isoformat }}">…</span>
             </div>
-            <div class="flex flex-wrap items-center gap-2 entropy-text-muted sm:justify-end">
-              <span>&#9829; <span data-like-count-for="post-{{ post.slug }}">{{ post.like_count }}</span></span>
+            <div class="post-actions-buttons">
+              <span class="entropy-text-muted">&#9829; <span data-like-count-for="post-{{ post.slug }}">{{ post.like_count }}</span></span>
               {% if user.is_authenticated %}
                 <button
                   type="button"

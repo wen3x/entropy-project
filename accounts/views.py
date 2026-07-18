@@ -280,24 +280,6 @@ def secret_panel(request):
             )
             request.user.refresh_from_db()
             messages.success(request, "Срок жизни аккаунта продлён на 30 дней.")
-        elif action == "golden_post":
-            title = request.POST.get("golden_title", "").strip()
-            content = request.POST.get("golden_content", "").strip()
-            if title and content:
-                from forum.models import Post
-
-                post = Post.objects.create(
-                    author=request.user,
-                    title=title,
-                    content=content,
-                    is_golden=True,
-                )
-                messages.success(
-                    request,
-                    f"Золотой пост «{post.title}» создан (24 ч, код: {post.slug}).",
-                )
-            else:
-                messages.error(request, "Укажите заголовок и текст Золотого поста.")
         elif action == "toggle_shop_item":
             item_id = request.POST.get("item_id")
             item = ShopItem.objects.filter(pk=item_id).first()

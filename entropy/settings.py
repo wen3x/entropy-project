@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles', # Для работы стилей
+    'cloudinary',
     'accounts',
     'forum',
 ]
@@ -128,6 +129,20 @@ WEBPUSH_VAPID_PRIVATE_KEY = os.getenv(
 WEBPUSH_VAPID_CLAIMS = {
     'sub': 'mailto:entropy@example.com',
 }
+
+# ── Cloudinary ───────────────────────────────────────────────────────────────
+CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME', '')
+CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY', '')
+CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET', '')
+
+if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
+    import cloudinary
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True,
+    )
 
 # ── Cron: секретный токен для внешнего триггера (cron-job.org) ────────────
 CRON_SECRET_TOKEN = os.getenv('CRON_SECRET_TOKEN', 'change-me-in-production')
