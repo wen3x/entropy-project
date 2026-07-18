@@ -6,5 +6,4 @@ venv/
 *.sqlite3
 *.log
 nul
-static
 staticfiles
