@@ -1,3 +1,5 @@
+import logging
+
 import django.db.utils
 
 from django.contrib import messages
@@ -8,6 +10,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .streaks import process_daily_login
+
+logger = logging.getLogger(__name__)
 
 
 def vitality_exempt_paths():
@@ -54,10 +58,19 @@ class BanMiddleware:
             return None
 
         url_name = getattr(request.resolver_match, "url_name", None)
+        username = request.user.username
+        path = request.path
+
+        logger.info(
+            f"BanMiddleware: {username} POST -> {path} (url_name={url_name})"
+        )
 
         # ── Создание нового поста ──
         if url_name in ("post_create", "post_create_in_node"):
             if self._is_banned(request.user):
+                logger.warning(
+                    f"BanMiddleware: ЗАБЛОКИРОВАН {username} на создание поста"
+                )
                 messages.error(
                     request, "Вы забанены и не можете создавать посты."
                 )
@@ -69,50 +82,75 @@ class BanMiddleware:
             if action == "quick_media_post":
                 node_slug = view_kwargs.get("node_slug")
                 node = self._resolve_node(node_slug)
-                if node and self._is_banned(request.user, node):
-                    messages.error(
-                        request,
-                        "Вы забанены и не можете писать в этом узле.",
+                if node:
+                    is_b = self._is_banned(request.user, node)
+                    logger.info(
+                        f"BanMiddleware: quick_media {username} в "
+                        f"{node_slug}, banned={is_b}"
                     )
-                    return redirect(
-                        "forum:node_detail", node_slug=node_slug
-                    )
+                    if is_b:
+                        messages.error(
+                            request,
+                            "Вы забанены и не можете писать в этом узле.",
+                        )
+                        return redirect(
+                            "forum:node_detail", node_slug=node_slug
+                        )
 
         # ── Комментарий к посту (без node_slug в URL) ──
         elif url_name == "post_detail":
             slug = view_kwargs.get("slug")
             post = self._resolve_post(slug)
-            if post and self._is_banned(request.user, post.node):
-                messages.error(
-                    request, "Вы забанены и не можете комментировать."
+            if post:
+                is_b = self._is_banned(request.user, post.node)
+                logger.info(
+                    f"BanMiddleware: comment {username} на пост "
+                    f"{slug} (node={post.node.slug if post.node else 'None'}), "
+                    f"banned={is_b}"
                 )
-                return redirect("forum:post_detail", slug=slug)
+                if is_b:
+                    messages.error(
+                        request, "Вы забанены и не можете комментировать."
+                    )
+                    return redirect("forum:post_detail", slug=slug)
 
         # ── Комментарий внутри узла ──
         elif url_name == "post_detail_in_node":
             post_slug = view_kwargs.get("post_slug")
             node_slug = view_kwargs.get("node_slug")
             post = self._resolve_post(post_slug)
-            if post and self._is_banned(request.user, post.node):
-                messages.error(
-                    request, "Вы забанены и не можете комментировать."
+            if post:
+                is_b = self._is_banned(request.user, post.node)
+                logger.info(
+                    f"BanMiddleware: comment_in_node {username} -> "
+                    f"{node_slug}/{post_slug}, banned={is_b}"
                 )
-                return redirect(
-                    "forum:post_detail_in_node",
-                    node_slug=node_slug,
-                    post_slug=post_slug,
-                )
+                if is_b:
+                    messages.error(
+                        request, "Вы забанены и не можете комментировать."
+                    )
+                    return redirect(
+                        "forum:post_detail_in_node",
+                        node_slug=node_slug,
+                        post_slug=post_slug,
+                    )
 
         # ── Редактирование комментария ──
         elif url_name == "edit_comment":
             pk = view_kwargs.get("pk")
             comment = self._resolve_comment(pk)
-            if comment and self._is_banned(request.user, comment.post.node):
-                messages.error(
-                    request,
-                    "Вы забанены и не можете редактировать комментарии.",
+            if comment:
+                is_b = self._is_banned(request.user, comment.post.node)
+                logger.info(
+                    f"BanMiddleware: edit_comment {username} pk={pk}, "
+                    f"banned={is_b}"
                 )
-                return redirect(comment.post.get_absolute_url())
+                if is_b:
+                    messages.error(
+                        request,
+                        "Вы забанены и не можете редактировать комментарии.",
+                    )
+                    return redirect(comment.post.get_absolute_url())
 
         return None
 

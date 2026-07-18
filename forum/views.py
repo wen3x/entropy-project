@@ -969,41 +969,57 @@ def debug_view(request):
     except Exception:
         has_ban_banner = False
 
+    now = timezone.now()
+    
     # ── Detailed ban info ──
     ban_rows = ""
+    unique_banned_users = set()
     if ban_table_ok:
         bans = Ban.objects.select_related('user', 'node').order_by('-created_at')[:20]
         for b in bans:
             uname = b.user.username
             target = "🌐 глобальный" if b.node is None else f"📁 {b.node.name}"
             expires = b.expires_at.strftime("%d.%m %H:%M")
-            expired = "(истёк)" if b.expires_at < timezone.now() else ""
+            expired = "(истёк)" if b.expires_at < now else "(АКТИВЕН)"
             reason = f"· {b.reason}" if b.reason else ""
-            ban_rows += f"<tr><td>{uname}</td><td>{target}</td><td>{expires}</td><td>{expired}</td><td>{reason}</td></tr>"
+            # Also test is_banned for each banned user
+            test_global = "✅" if is_banned(b.user) else "❌"
+            test_with_node = ""
+            if b.node:
+                test_with_node = f" | is_banned(+node): {'✅' if is_banned(b.user, b.node) else '❌'}"
+            ban_rows += f"<tr><td>{uname}</td><td>{target}</td><td>{expires}</td><td style='color:{'#ff4444' if '(АКТИВЕН)' in expired else '#888'}'>{expired}</td><td>{reason}</td><td>{test_global}{test_with_node}</td></tr>"
+            unique_banned_users.add(uname)
     
     # ── Test is_banned for current user ──
     self_ban_status = is_banned(request.user) if request.user.is_authenticated else False
     self_ban_info = f"{'✅ ЗАБАНЕН' if self_ban_status else '❌ НЕ забанен'}" if request.user.is_authenticated else "не авторизован"
+    
+    # ── Show middleware exists ──
+    from django.conf import settings
+    has_ban_mw = 'accounts.middleware.BanMiddleware' in settings.MIDDLEWARE
     
     html = f"""
     <html><body style="font-family:monospace;padding:2rem;background:#000;color:#0f0;">
     <h2>🔍 Диагностика Entropy</h2>
     <table border="1" style="border-collapse:collapse;border-color:#333;width:100%;">
     <tr><td>Git commit</td><td>{git_hash}</td></tr>
+    <tr><td>Серверное время</td><td>{now.strftime('%d.%m.%Y %H:%M:%S %Z')}</td></tr>
     <tr><td>Ban table exists</td><td>{'✅' if ban_table_ok else '❌'}</td></tr>
     <tr><td>Ban records</td><td>{ban_count}</td></tr>
+    <tr><td>BanMiddleware в settings</td><td>{'✅' if has_ban_mw else '❌'}</td></tr>
     <tr><td>is_banned() в коде</td><td>{'✅' if has_is_banned else '❌'}</td></tr>
     <tr><td>base.html (nav+ban+inlineCSS)</td><td>{'✅' if has_ban_banner else '❌'}</td></tr>
     <tr><td>ВЕРДИКТ</td><td>{'НОВЫЙ код 🟢' if has_is_banned else 'СТАРЫЙ код 🔴'}</td></tr>
     <tr><td><b>ВАШ СТАТУС</b></td><td><b>{self_ban_info}</b></td></tr>
     </table>
-    <h3>📋 Все баны в БД:</h3>
+    <h3>📋 Все баны в БД (с тестом is_banned для каждого):</h3>
     <table border="1" style="border-collapse:collapse;border-color:#333;width:100%;">
-    <tr><th>Пользователь</th><th>Тип</th><th>Истекает</th><th></th><th>Причина</th></tr>
-    {ban_rows or '<tr><td colspan="5">Нет банов</td></tr>'}
+    <tr><th>Пользователь</th><th>Тип</th><th>Истекает</th><th>Статус</th><th>Причина</th><th>is_banned()</th></tr>
+    {ban_rows or '<tr><td colspan="6">Нет банов</td></tr>'}
     </table>
-    <p>✅ = новая версия | ❌ = старая версия</p>
-    <p><b>ВАШ СТАТУС:</b> is_banned(request.user) = {self_ban_status} — если True, то бан работает для вас</p>
+    <p>✅ = новая версия | ❌ = старая версия | (АКТИВЕН) = бан ещё действует</p>
+    <p><b>ВАШ СТАТУС:</b> is_banned(request.user) = {self_ban_status}</p>
+    <p>Подсказка: если <b>(АКТИВЕН)</b> но ❌ — баны есть, но is_banned() их не находит (ошибка).</p>
     </body></html>
     """
     return HttpResponse(html, content_type="text/html")
