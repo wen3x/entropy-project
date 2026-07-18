@@ -7,7 +7,9 @@ urlpatterns = [
     path("register/", views.register, name="register"),
     path("expired/", views.vitality_expired, name="vitality_expired"),
     path("profile/", views.profile_redirect, name="profile"),
-    path("profile/<str:username>/", views.profile_detail, name="profile_detail"),
+    path("u/@<str:username>/", views.profile_detail, name="profile_detail"),
+    # Redirect from old /profile/username/ to /u/@username/
+    path("profile/<str:username>/", views.profile_old_redirect, name="profile_detail_old"),
     path("streaks/", views.streaks_page, name="streaks"),
     path("shop/", views.shop_view, name="shop"),
     path("notifications/", views.notifications_list, name="notifications_list"),

@@ -43,6 +43,11 @@ def profile_redirect(request):
     return redirect("profile_detail", username=request.user.username)
 
 
+def profile_old_redirect(request, username):
+    """Редирект со старого /profile/username/ на /u/@username/"""
+    return redirect("profile_detail", username=username, permanent=True)
+
+
 def profile_detail(request, username):
     profile_user = get_object_or_404(
         get_user_model(), username__iexact=username

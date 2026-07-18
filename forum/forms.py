@@ -19,7 +19,7 @@ MEDIA_SOURCE_CHOICES = [
 
 
 class PostForm(forms.ModelForm):
-    """Форма создания поста с поддержкой Cloudinary медиа.
+    """Форма создания поста с поддержкой Cloudinary медиа и @упоминаний.
     Сначала выбирается тип медиа (изображение/GIF/аудио), потом способ (файл/ссылка).
     """
     media_type = forms.ChoiceField(
@@ -54,7 +54,7 @@ class PostForm(forms.ModelForm):
         }
         widgets = {
             "title": forms.TextInput(attrs={"class": INPUT}),
-            "content": forms.Textarea(attrs={"rows": 6, "class": INPUT}),
+            "content": forms.Textarea(attrs={"rows": 6, "class": INPUT, "placeholder": "Текст поста... (@username — упомянуть пользователя)"}),
         }
 
     def clean(self):
@@ -106,7 +106,7 @@ class CommentForm(forms.ModelForm):
             "text": forms.Textarea(
                 attrs={
                     "rows": 3,
-                    "placeholder": "Ваш комментарий…",
+                    "placeholder": "Ваш комментарий… (@username — упомянуть пользователя)",
                     "class": INPUT,
                 }
             ),

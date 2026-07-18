@@ -1,15 +1,16 @@
 {% load profile_tags %}
+{% load graveyard_tags %}
 <li class="entropy-card p-4">
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0 flex-1">
       <p class="text-sm font-bold">
         <a href="{% url 'profile_detail' comment.author.username %}" class="hover:underline"
            {% with s=comment.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>
-          {{ comment.author.username }}
+          @{{ comment.author.username }}
         </a>
         {% if comment.is_approved %}<span class="ml-2 entropy-badge-invert px-2 py-0.5 text-[10px] font-extrabold uppercase">Одобрено</span>{% endif %}
       </p>
-      <p class="mt-2 whitespace-pre-wrap text-sm entropy-text-soft">{{ comment.text }}
+      <p class="mt-2 whitespace-pre-wrap text-sm entropy-text-soft">{{ comment.text|mention_links|safe }}
         {% if comment.is_edited %}<span class="ml-1 text-[10px] entropy-text-faint" title="{{ comment.edited_at|date:'d.m.Y H:i' }}">(Изменено)</span>{% endif %}
       </p>
       {% if user.is_authenticated and post.expires_at > now %}

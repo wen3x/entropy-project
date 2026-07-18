@@ -94,7 +94,7 @@
               <span class="notif-badge absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center px-1 text-[10px] font-bold">{{ unread_notifications }}</span>
             {% endif %}
           </a>
-          <a href="{% url 'profile_detail' user.username %}" class="entropy-btn px-3 py-1.5 text-sm font-semibold">Профиль</a>
+          <a href="{% url 'profile_detail' user.username %}" class="entropy-btn px-3 py-1.5 text-sm font-semibold">@{{ user.username }}</a>
         {% else %}
           <a href="{% url 'login' %}" class="entropy-btn px-3 py-1.5 text-sm font-semibold">Вход</a>
           <a href="{% url 'register' %}" class="entropy-btn-primary px-3 py-1.5 text-sm font-semibold">Регистрация</a>

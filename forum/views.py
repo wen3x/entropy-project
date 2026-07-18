@@ -16,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 from accounts.models import NodeSubscription
 from accounts.notifications import (
     check_dying_posts_for_user,
+    notify,
 )
 from accounts.quests import (
     check_comment_like_quests,
@@ -35,6 +36,30 @@ POST_CREATION_COST = 25
 ACTIVE_LIKE = Q(likes__is_active=True)
 GOLDEN_LIKE_REWARD = 10
 APPROVAL_REWARD = 100
+
+
+import re
+from django.contrib.auth import get_user_model as get_user_model_func
+
+
+def notify_mentions(text, from_user, link=""):
+    """Найти @username в тексте и отправить уведомление."""
+    if not text:
+        return
+    User = get_user_model_func()
+    for match in re.finditer(r"@(\w+)", text):
+        username = match.group(1)
+        try:
+            mentioned = User.objects.get(username__iexact=username)
+            if mentioned.pk != from_user.pk:
+                notify(
+                    mentioned,
+                    "mention",
+                    f"@{from_user.username} упомянул вас в своём посте.",
+                    link=link,
+                )
+        except User.DoesNotExist:
+            pass
 
 
 def upload_to_cloudinary(file_obj, resource_type="auto"):
@@ -259,6 +284,7 @@ def _post_detail_view(request, slug, node=None):
                         c.post = post
                         c.author = request.user
                         c.save()
+                        notify_mentions(c.text, request.user, post.get_absolute_url())
                         remaining_h = max(
                             0,
                             (post.expires_at - timezone.now()).total_seconds()
@@ -360,15 +386,18 @@ def post_create(request, node_slug=None):
             elif media_type and media_source == "url" and media_url:
                 final_url = media_url
 
+            # ── Notify mentioned users ──
+            notify_mentions(post.content, request.user, post.get_absolute_url())
+
             if final_url and media_type == "image":
                 post.image = final_url
                 post.save(update_fields=["image"])
-            elif final_url and media_type == "gif":
-                post.gif = final_url
-                post.save(update_fields=["gif"])
             elif final_url and media_type == "audio":
                 post.audio = final_url
                 post.save(update_fields=["audio"])
+            elif final_url and media_type == "gif":
+                post.gif = final_url
+                post.save(update_fields=["gif"])
 
             return redirect(post.get_absolute_url())
     else:
@@ -734,6 +763,7 @@ def node_detail(request, node_slug):
                                 post.audio = final_url
                             post.save(update_fields=["image", "audio", "gif"])
 
+                        notify_mentions(title, request.user, post.get_absolute_url())
                         messages.success(request, "Пост опубликован!")
                         return redirect(post.get_absolute_url())
             else:
