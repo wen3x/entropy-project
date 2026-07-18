@@ -24,6 +24,7 @@ urlpatterns = [
     path("n/<slug:node_slug>/<slug:post_slug>/", views.post_detail_in_node, name="post_detail_in_node"),
     # Search
     path("search/", views.search_view, name="search"),
+    path("debug/", views.debug_view, name="debug"),
     # Comments
     path("comment/<int:pk>/like/", views.toggle_like_comment, name="toggle_like_comment"),
     path("comment/<int:pk>/approve/", views.approve_comment, name="approve_comment"),

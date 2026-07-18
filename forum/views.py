@@ -950,6 +950,54 @@ def search_view(request):
     )
 
 
+# ── DIAGNOSTICS ──────────────────────────────────────────────────────────────
+
+def debug_view(request):
+    """Показывает статус системы (только для wen3x)."""
+    if not is_god(request.user):
+        return HttpResponseForbidden()
+
+    try:
+        ban_count = Ban.objects.count()
+        ban_table_ok = True
+    except Exception:
+        ban_count = 0
+        ban_table_ok = False
+
+    import subprocess
+    try:
+        git_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=Path(__file__).parent.parent, stderr=subprocess.STDOUT).decode("utf-8").strip()
+    except Exception:
+        git_hash = "unknown"
+
+    import sys
+    mod = sys.modules.get(__name__)
+    has_is_banned = hasattr(mod, 'is_banned') if mod else False
+    has_ban_banner = True  # Will check if base.html has it
+    try:
+        with open(Path(__file__).resolve().parent.parent / 'templates' / 'base.html', 'r', encoding='utf-8') as f:
+            content = f.read()
+            has_ban_banner = 'active_ban' in content and 'entropy-bottom-nav' in content
+    except Exception:
+        has_ban_banner = False
+
+    html = f"""
+    <html><body style="font-family:monospace;padding:2rem;background:#000;color:#0f0;">
+    <h2>🔍 Диагностика Entropy</h2>
+    <table border="1" style="border-collapse:collapse;border-color:#333;">
+    <tr><td>Git commit</td><td>{git_hash}</td></tr>
+    <tr><td>Ban table exists</td><td>{'✅' if ban_table_ok else '❌'}</td></tr>
+    <tr><td>Ban records</td><td>{ban_count}</td></tr>
+    <tr><td>is_banned() в коде</td><td>{'✅' if has_is_banned else '❌'}</td></tr>
+    <tr><td>base.html (nav+ban)</td><td>{'✅' if has_ban_banner else '❌'}</td></tr>
+    <tr><td>ВЕРДИКТ</td><td>{'НОВЫЙ код 🟢' if has_is_banned else 'СТАРЫЙ код 🔴'}</td></tr>
+    </table>
+    <p>✅ = новая версия | ❌ = старая версия</p>
+    </body></html>
+    """
+    return HttpResponse(html, content_type="text/html")
+
+
 # ── CUSTOM 404 ERROR HANDLER ──────────────────────────────────────────────
 
 def custom_404(request, exception=None):
