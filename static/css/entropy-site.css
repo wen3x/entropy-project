@@ -932,6 +932,12 @@ article {
   border-color: var(--entropy-border);
 }
 
+/* Инверсия на тёмной теме, чтобы светлые изображения не слепили */
+html[data-site-theme="dark"] .node-avatar img,
+html[data-site-theme="dark"] .node-header img {
+  filter: invert(1);
+}
+
 /* ── Post meta row (tight) ── */
 .post-meta {
   line-height: 1.2;
