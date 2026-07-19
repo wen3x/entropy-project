@@ -231,6 +231,43 @@ class Ban(models.Model):
         return f"Бан {self.user.username} ({target}) до {self.expires_at:%d.%m %H:%M}"
 
 
+class Moderator(models.Model):
+    """Модератор узла. Если node=None — модератор всего форума."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="moderations",
+    )
+    node = models.ForeignKey(
+        "forum.Node",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="moderators",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_moderations",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "node"),
+                name="uniq_moderator_user_node",
+            )
+        ]
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        target = "весь форум" if self.node is None else f"узел «{self.node.name}»"
+        return f"Модератор {self.user.username} ({target})"
+
+
 class PushSubscription(models.Model):
     """Подписка браузера на Push-уведомления (Web Push Protocol)."""
     user = models.ForeignKey(

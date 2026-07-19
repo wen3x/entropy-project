@@ -17,16 +17,20 @@
     {% for post in posts %}
       <li class="flex flex-wrap items-center justify-between gap-4 px-4 py-4 font-mono text-sm">
         <p class="entropy-text-soft">{{ post.title|corrupt_title }}</p>
-        {% if is_god %}
+        {% if is_god or is_moderator %}
         <div class="flex flex-wrap gap-2">
+          {% if is_moderator %}
           <form action="{% url 'forum:post_resurrect' post.slug %}" method="post">
             {% csrf_token %}
             <button type="submit" class="entropy-btn px-3 py-1 text-xs font-semibold">Воскресить</button>
           </form>
+          {% endif %}
+          {% if is_god %}
           <form action="{% url 'forum:post_destroy' post.slug %}" method="post" onsubmit="return confirm('Уничтожить безвозвратно?');">
             {% csrf_token %}
             <button type="submit" class="entropy-btn-invert px-3 py-1 text-xs">Уничтожить</button>
           </form>
+          {% endif %}
         </div>
         {% endif %}
       </li>

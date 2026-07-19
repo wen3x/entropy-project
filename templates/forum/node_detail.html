@@ -205,6 +205,11 @@
               <span class="entropy-text-muted">Аноним</span>
             {% else %}
               <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>@{{ post.author.username }}</a>
+              {% if post.author.username == god_username %}
+                <span class="ml-1 border border-red-400 px-1 py-0.5 text-[9px] font-bold uppercase" style="color:#ef4444;border-color:#ef4444;">АДМИН</span>
+              {% elif post.author.pk in moderator_ids %}
+                <span class="ml-1 border px-1 py-0.5 text-[9px] font-bold uppercase" style="color:#a855f7;border-color:#a855f7;">МОДЕРАТОР</span>
+              {% endif %}
             {% endif %}
             {% if post.is_golden %}
               <span class="ml-2 border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-yellow-500">Золотой</span>

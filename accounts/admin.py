@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .models import (
+    Moderator,
     Notification,
     PushSubscription,
     Quest,
@@ -77,6 +78,13 @@ class ShopItemAdmin(admin.ModelAdmin):
 class UserQuestSlotAdmin(admin.ModelAdmin):
     list_display = ("user", "slot", "quest_code", "progress", "completed_at")
     list_filter = ("quest_code", "completed_at")
+
+
+@admin.register(Moderator)
+class ModeratorAdmin(admin.ModelAdmin):
+    list_display = ("user", "node", "created_by", "created_at")
+    list_filter = ("node",)
+    search_fields = ("user__username",)
 
 
 @admin.register(UserDailyQuestCycle)

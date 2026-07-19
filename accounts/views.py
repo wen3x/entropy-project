@@ -88,12 +88,22 @@ def profile_detail(request, username):
     profile_theme_id = profile_color if profile_color in PALETTES else "default"
     profile_theme = get_palette(profile_color)
 
+    # Проверка роли пользователя
+    god_username = getattr(settings, 'GOD_USERNAME', 'admin')
+    is_profile_god = profile_user.username == god_username
+    is_profile_moderator = False
+    if not is_profile_god:
+        from .models import Moderator
+        is_profile_moderator = Moderator.objects.filter(user=profile_user).exists()
+
     return render(
         request,
         "accounts/profile.html",
         {
             "profile_user": profile_user,
             "is_own_profile": is_own,
+            "is_profile_god": is_profile_god,
+            "is_profile_moderator": is_profile_moderator,
             "streak_reward": streak_reward,
             "post_count": post_count,
             "active_posts": active_posts,
@@ -447,18 +457,69 @@ def secret_panel(request):
             user.save(update_fields=["is_anonymous_mode"])
             state = "включён" if user.is_anonymous_mode else "выключен"
             messages.success(request, f"Анонимный режим {state}.")
+        elif action == "add_moderator":
+            username = request.POST.get("mod_username", "").strip()
+            node_slug = request.POST.get("mod_node", "").strip()
+
+            if not username:
+                messages.error(request, "Укажите ник пользователя.")
+            else:
+                try:
+                    target_user = User.objects.get(username__iexact=username)
+                except User.DoesNotExist:
+                    messages.error(request, f"Пользователь «{username}» не найден.")
+                    return redirect("secret_panel")
+
+                node = None
+                scope = "весь форум"
+                if node_slug:
+                    node = Node.objects.filter(slug=node_slug).first()
+                    if not node:
+                        messages.error(request, f"Узел «{node_slug}» не найден.")
+                        return redirect("secret_panel")
+                    scope = f"узел «{node.name}»"
+
+                from .models import Moderator
+                _, created = Moderator.objects.get_or_create(
+                    user=target_user,
+                    node=node,
+                    defaults={"created_by": request.user},
+                )
+                if created:
+                    messages.success(
+                        request,
+                        f"Пользователь «{target_user.username}» назначен модератором ({scope}).",
+                    )
+                else:
+                    messages.info(
+                        request,
+                        f"Пользователь «{target_user.username}» уже является модератором ({scope}).",
+                    )
+        elif action == "remove_moderator":
+            mod_id = request.POST.get("mod_id", "")
+            from .models import Moderator
+            mod = Moderator.objects.filter(pk=mod_id).first()
+            if mod:
+                target = mod.user.username
+                mod.delete()
+                messages.success(request, f"Модератор «{target}» снят.")
+            else:
+                messages.error(request, "Модератор не найден.")
 
         return redirect("secret_panel")
 
     ensure_default_shop_items()
     now = timezone.now()
     active_bans = Ban.objects.filter(expires_at__gt=now).select_related("user", "node").order_by("-created_at")[:50]
+    from .models import Moderator
+    moderators = Moderator.objects.select_related("user", "node", "created_by").order_by("-created_at")[:50]
     return render(
         request,
         "accounts/secret_panel.html",
         {
             "shop_items": ShopItem.objects.order_by("sort_order", "id"),
             "active_bans": active_bans,
+            "moderators": moderators,
             "nodes": Node.objects.filter(is_active=True).order_by("name"),
             "anonymous_mode": request.user.is_anonymous_mode,
         },

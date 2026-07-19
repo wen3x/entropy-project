@@ -8,7 +8,14 @@
     <div class="entropy-card p-8">
       <div class="flex flex-wrap items-start justify-between gap-4 pb-6 border-b entropy-border">
         <div>
-          <h1 class="text-2xl font-extrabold uppercase tracking-tight">{% if is_own_profile %}Мой профиль{% else %}{{ profile_user.username }}{% endif %}</h1>
+          <h1 class="text-2xl font-extrabold uppercase tracking-tight flex flex-wrap items-center gap-2">
+            {% if is_own_profile %}Мой профиль{% else %}{{ profile_user.username }}{% endif %}
+            {% if is_profile_god %}
+              <span class="border border-red-500 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider" style="color:#ef4444;border-color:#ef4444;">АДМИН</span>
+            {% elif is_profile_moderator %}
+              <span class="border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider entropy-border" style="color:#a855f7;border-color:#a855f7;">МОДЕРАТОР</span>
+            {% endif %}
+          </h1>
           <p class="mt-1 text-sm font-medium entropy-text-faint">{% if is_own_profile %}Ваш аккаунт{% else %}Публичная статистика{% endif %}</p>
         </div>
         {% if is_own_profile %}
@@ -87,8 +94,13 @@
                 border-color: {{ profile_theme.fg }} !important;">
       <div class="flex flex-wrap items-start justify-between gap-4 pb-6 border-b" style="border-color: {{ profile_theme.fg }}">
         <div>
-          <h1 class="text-2xl font-extrabold uppercase tracking-tight" style="color: {{ profile_theme.fg }}; {% if profile_theme.glow %}text-shadow: {{ profile_theme.glow }};{% endif %}">
+          <h1 class="text-2xl font-extrabold uppercase tracking-tight flex flex-wrap items-center gap-2" style="color: {{ profile_theme.fg }}; {% if profile_theme.glow %}text-shadow: {{ profile_theme.glow }};{% endif %}">
             {% if is_own_profile %}Мой профиль{% else %}{{ profile_user.username }}{% endif %}
+            {% if is_profile_god %}
+              <span class="border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider" style="color:#ef4444;border-color:#ef4444;text-shadow:none;">АДМИН</span>
+            {% elif is_profile_moderator %}
+              <span class="border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider" style="color:#a855f7;border-color:#a855f7;text-shadow:none;">МОДЕРАТОР</span>
+            {% endif %}
           </h1>
           <p class="mt-1 text-sm font-medium" style="color: {{ profile_theme.fg_faint }}">{% if is_own_profile %}Ваш аккаунт{% else %}Публичная статистика{% endif %}</p>
           {% if profile_theme_id != 'default' %}

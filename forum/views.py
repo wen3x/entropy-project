@@ -87,6 +87,46 @@ def is_god(user) -> bool:
     return user.is_authenticated and user.username == god_username
 
 
+def can_moderate(user, node=None) -> bool:
+    """Проверить, есть ли у пользователя права модератора.
+    Если node указан — проверяет модерацию для этого узла (или глобальную).
+    Если node=None — проверяет только глобальную модерацию.
+    god автоматически считается модератором везде."""
+    if not user.is_authenticated:
+        return False
+    if is_god(user):
+        return True
+    from accounts.models import Moderator
+    q = Q(user=user)
+    if node:
+        q &= (Q(node=node) | Q(node__isnull=True))
+    else:
+        q &= Q(node__isnull=True)
+    try:
+        from accounts.models import Moderator
+        q = Q(user=user)
+        if node:
+            q &= (Q(node=node) | Q(node__isnull=True))
+        else:
+            q &= Q(node__isnull=True)
+        return Moderator.objects.filter(q).exists()
+    except (django.db.utils.OperationalError, django.db.utils.ProgrammingError):
+        return False
+
+
+def get_moderator_ids(user_ids: list) -> set:
+    """Вернуть множество PK пользователей, которые являются модераторами."""
+    try:
+        from accounts.models import Moderator
+        return set(
+            Moderator.objects.filter(user_id__in=user_ids)
+            .values_list("user_id", flat=True)
+            .distinct()
+        )
+    except (django.db.utils.OperationalError, django.db.utils.ProgrammingError):
+        return set()
+
+
 def is_banned(user, node=None) -> bool:
     """Проверить, забанен ли пользователь.
     Если node указан — проверяет бан только для этого узла.
@@ -208,10 +248,15 @@ def post_list(request):
             if post.pk in liked_ids:
                 liked_slugs.add(post.slug)
 
+    # ── Moderator IDs for badge display ──
+    author_ids = list(posts.values_list("author_id", flat=True).distinct())
+    moderator_ids = get_moderator_ids(author_ids) if author_ids else set()
+
     context = {
         "posts": posts,
         "liked_slugs": liked_slugs,
         "is_god": is_god(request.user),
+        "moderator_ids": moderator_ids,
         "search_results": search_results,
     }
     if request.user.is_authenticated:
@@ -221,13 +266,17 @@ def post_list(request):
 
 
 def graveyard_list(request):
-    posts = Post.objects.filter(is_active=False).select_related("author").only(
-        "slug", "title", "author", "expires_at", "pk"
+    posts = Post.objects.filter(is_active=False).select_related("author", "node").only(
+        "slug", "title", "author", "expires_at", "pk", "node_id"
     )
     return render(
         request,
         "forum/graveyard.html",
-        {"posts": posts, "is_god": is_god(request.user)},
+        {
+            "posts": posts,
+            "is_god": is_god(request.user),
+            "is_moderator": can_moderate(request.user),
+        },
     )
 
 
@@ -355,6 +404,12 @@ def _post_detail_view(request, slug, node=None):
         else:
             comment_form = CommentForm()
 
+    # ── Moderator IDs for badge display ──
+    all_author_ids = {post.author_id}
+    for c in all_comments:
+        all_author_ids.add(c.author_id)
+    moderator_ids = get_moderator_ids(list(all_author_ids)) if all_author_ids else set()
+
     return render(
         request,
         "forum/post_detail.html",
@@ -367,8 +422,11 @@ def _post_detail_view(request, slug, node=None):
             "liked_post": liked_post,
             "liked_comment_ids": liked_comment_ids,
             "can_delete": request.user.is_authenticated
-            and (request.user.pk == post.author_id or is_god(request.user)),
+            and (request.user.pk == post.author_id or can_moderate(request.user, post.node if post.node_id else None)),
+            "is_moderator": can_moderate(request.user),
+            "is_node_moderator": can_moderate(request.user, post.node if post.node_id else None),
             "is_god": is_god(request.user),
+            "moderator_ids": moderator_ids,
         },
     )
 
@@ -473,11 +531,10 @@ def post_create(request, node_slug=None):
 @login_required
 @require_http_methods(["POST"])
 def post_delete(request, slug):
-    # Автор удаляет свой пост; god может удалить любой пост
-    if is_god(request.user):
-        post = get_object_or_404(Post, slug=slug)
-    else:
-        post = get_object_or_404(Post, slug=slug, author=request.user)
+    # Автор удаляет свой пост; модератор/god может удалить любой пост
+    post = get_object_or_404(Post, slug=slug)
+    if not (request.user.pk == post.author_id or can_moderate(request.user, post.node if post.node_id else None)):
+        return HttpResponseForbidden("Доступ запрещён.")
     if post.is_active:
         post.is_active = False
         post.save(update_fields=["is_active"])
@@ -488,7 +545,7 @@ def post_delete(request, slug):
 @login_required
 @require_http_methods(["POST"])
 def post_resurrect(request, slug):
-    if not is_god(request.user):
+    if not can_moderate(request.user):
         return HttpResponseForbidden("Доступ запрещён.")
     post = get_object_or_404(Post, slug=slug)
     post.is_active = True
@@ -661,9 +718,9 @@ def toggle_pin_post(request, slug):
 @login_required
 @require_http_methods(["POST"])
 def approve_comment(request, pk):
-    if not is_god(request.user):
-        return HttpResponseForbidden("Доступ запрещён.")
     comment = get_object_or_404(Comment, pk=pk, post__is_golden=True)
+    if not can_moderate(request.user, comment.post.node if comment.post.node_id else None):
+        return HttpResponseForbidden("Доступ запрещён.")
     if comment.is_approved:
         messages.info(request, "Комментарий уже одобрен.")
         return redirect(comment.post.get_absolute_url())
@@ -712,7 +769,7 @@ def edit_comment(request, pk):
 def delete_comment(request, pk):
     """Удаление комментария: автор или администратор может удалить любой комментарий/ответ."""
     comment = get_object_or_404(Comment, pk=pk)
-    if not (request.user.pk == comment.author_id or is_god(request.user)):
+    if not (request.user.pk == comment.author_id or can_moderate(request.user, comment.post.node if comment.post.node_id else None)):
         return HttpResponseForbidden("Доступ запрещён.")
     if not comment.is_active:
         messages.info(request, "Комментарий уже удалён.")
@@ -907,6 +964,10 @@ def node_detail(request, node_slug):
             messages.error(request, "Только администратор может создавать Золотые посты.")
         return redirect("forum:node_detail", node_slug=node.slug)
 
+    # ── Moderator IDs for badge display ──
+    author_ids = list(posts.values_list("author_id", flat=True).distinct())
+    moderator_ids = get_moderator_ids(author_ids) if author_ids else set()
+
     return render(
         request,
         "forum/node_detail.html",
@@ -917,7 +978,9 @@ def node_detail(request, node_slug):
             "total_posts": total_posts,
             "total_likes": total_likes,
             "is_subscribed": is_subscribed,
+            "is_moderator": can_moderate(request.user, node),
             "is_god": is_god(request.user),
+            "moderator_ids": moderator_ids,
             "node_ban_info": node_ban_info,
         },
     )
