@@ -247,13 +247,11 @@ def shop_view(request):
 
     if request.user.is_authenticated:
         user_tokens = request.user.tokens
-        has_basic_colors = request.user.has_basic_colors
-        has_gold_color = request.user.has_gold_color
+        owned_colors = request.user.owned_colors_list
         current_color = request.user.profile_color
     else:
         user_tokens = 0
-        has_basic_colors = False
-        has_gold_color = False
+        owned_colors = []
         current_color = ""
 
     return render(
@@ -262,11 +260,66 @@ def shop_view(request):
         {
             "shop_items": items,
             "user_tokens": user_tokens,
-            "has_basic_colors": has_basic_colors,
-            "has_gold_color": has_gold_color,
+            "owned_colors": owned_colors,
             "current_color": current_color,
         },
     )
+
+
+@login_required
+def inventory_view(request):
+    """Страница инвентаря — просмотр и применение купленных тем."""
+    from .theme import PALETTES
+
+    User = get_user_model()
+    user = request.user
+    owned_colors = user.owned_colors_list
+    current_color = user.profile_color or "default"
+
+    # Все доступные цвета с их палитрами
+    theme_list = []
+    for color_key in owned_colors:
+        palette = PALETTES.get(color_key)
+        if not palette:
+            continue
+        theme_list.append({
+            "key": color_key,
+            "name": {
+                "ice": "Ледяное сияние",
+                "matrix": "Матрица",
+                "sunset": "Закат энтропии",
+                "gold": "Золотой",
+                "red": "Красный",
+                "blue": "Синий",
+                "green": "Зелёный",
+            }.get(color_key, color_key),
+            "color": palette["fg"],
+            "is_active": color_key == current_color,
+        })
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        if action == "apply_theme":
+            theme_key = request.POST.get("theme_key", "")
+            if theme_key in owned_colors:
+                User.objects.filter(pk=user.pk).update(profile_color=theme_key)
+                messages.success(request, f"Тема применена.")
+            else:
+                messages.error(request, "У вас нет этой темы.")
+            return redirect("inventory")
+        elif action == "reset_theme":
+            ok, msg = reset_theme(user)
+            if ok:
+                messages.success(request, msg)
+            else:
+                messages.error(request, msg)
+            return redirect("inventory")
+
+    return render(request, "accounts/inventory.html", {
+        "theme_list": theme_list,
+        "current_color": current_color,
+        "owned_count": len(owned_colors),
+    })
 
 
 @login_required

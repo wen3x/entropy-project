@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load profile_tags %}
 
 {% block title %}Магазин{% endblock %}
 
@@ -19,24 +20,23 @@
   {% else %}
     <div class="space-y-4">
       {% for item in shop_items %}
+        {% with item_code=item.code %}
+        {% with theme_color=item_code|cut:"profile-color-" %}
         <article class="entropy-panel p-6">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="min-w-0 flex-1">
               <h2 class="text-lg font-bold">{{ item.title }}</h2>
               <p class="mt-2 text-sm entropy-text-muted">{{ item.description }}</p>
 
-              {% if item.item_type == 'profile_color_basic' and has_basic_colors %}
+              {% if item.item_type == 'extend_vitality' %}
+                <p class="mt-3 text-xs font-bold uppercase tracking-wide entropy-text-faint">Цена: {{ item.price_tokens }} токенов</p>
+              {% elif theme_color in owned_colors %}
                 <p class="mt-2 text-xs font-bold uppercase tracking-wide entropy-text-emphasis flex items-center gap-1">
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              Куплено — переключение бесплатно</p>
-              {% elif item.item_type == 'profile_color_gold' and has_gold_color %}
-                <p class="mt-2 text-xs font-bold uppercase tracking-wide entropy-text-emphasis flex items-center gap-1">
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              Куплено — активация бесплатно</p>
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  Куплено
+                </p>
               {% else %}
                 <p class="mt-3 text-xs font-bold uppercase tracking-wide entropy-text-faint">Цена: {{ item.price_tokens }} токенов</p>
               {% endif %}
@@ -47,44 +47,22 @@
               <input type="hidden" name="action" value="buy">
               <input type="hidden" name="item_code" value="{{ item.code }}">
 
-              {% if item.item_type == 'profile_color_basic' %}
-                <div class="mb-3 flex flex-wrap justify-end gap-2 text-xs">
-                  <label class="flex cursor-pointer items-center gap-1 border px-2 py-1 font-semibold {% if current_color == 'ice' %}entropy-option-selected{% else %}entropy-border-muted{% endif %}">
-                    <input type="radio" name="color" value="ice" required class="!w-3 !h-3" {% if current_color == 'ice' %}checked{% endif %}>
-                    <span style="color:#38bdf8">Ледяное сияние</span>
-                  </label>
-                  <label class="flex cursor-pointer items-center gap-1 border px-2 py-1 font-semibold {% if current_color == 'matrix' %}entropy-option-selected{% else %}entropy-border-muted{% endif %}">
-                    <input type="radio" name="color" value="matrix" class="!w-3 !h-3" {% if current_color == 'matrix' %}checked{% endif %}>
-                    <span style="color:#4ade80">Матрица</span>
-                  </label>
-                  <label class="flex cursor-pointer items-center gap-1 border px-2 py-1 font-semibold {% if current_color == 'sunset' %}entropy-option-selected{% else %}entropy-border-muted{% endif %}">
-                    <input type="radio" name="color" value="sunset" class="!w-3 !h-3" {% if current_color == 'sunset' %}checked{% endif %}>
-                    <span style="color:#f97316">Закат энтропии</span>
-                  </label>
-                </div>
-                {% if has_basic_colors %}
+              {% if item.item_type == 'extend_vitality' %}
+                <button type="submit" class="entropy-btn-primary px-4 py-2 text-sm font-semibold">Купить</button>
+              {% elif theme_color in owned_colors %}
+                {% if current_color == theme_color %}
+                  <span class="text-xs entropy-text-faint">Уже активна</span>
+                {% else %}
                   <button type="submit" class="entropy-btn px-4 py-2 text-sm font-semibold">Активировать</button>
-                {% else %}
-                  <button type="submit" class="entropy-btn-primary px-4 py-2 text-sm font-semibold">Купить и активировать</button>
                 {% endif %}
-
-              {% elif item.item_type == 'profile_color_gold' %}
-                {% if has_gold_color %}
-                  {% if current_color == 'gold' %}
-                    <span class="text-xs entropy-text-faint">Уже активна</span>
-                  {% else %}
-                    <button type="submit" class="entropy-btn px-4 py-2 text-sm font-semibold">Активировать</button>
-                  {% endif %}
-                {% else %}
-                  <button type="submit" class="entropy-btn-primary px-4 py-2 text-sm font-semibold">Купить</button>
-                {% endif %}
-
               {% else %}
                 <button type="submit" class="entropy-btn-primary px-4 py-2 text-sm font-semibold">Купить</button>
               {% endif %}
             </form>
           </div>
         </article>
+        {% endwith %}
+        {% endwith %}
       {% endfor %}
     </div>
   {% endif %}
@@ -92,12 +70,16 @@
   {% if current_color %}
     <div class="mt-6 entropy-panel p-4 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <p class="text-sm font-bold">Текущая тема профиля:
-          {% if current_color == 'red' %}<span style="color:#c96a6a">Красный</span>
-          {% elif current_color == 'blue' %}<span style="color:#6a94c9">Синий</span>
-          {% elif current_color == 'green' %}<span style="color:#6aab7d">Зелёный</span>
+        <p class="text-sm font-bold" style="color: var(--profile-fg, inherit);">
+          Текущая тема:
+          {% if current_color == 'red' %}<span style="color:#e74c4c">Красный</span>
+          {% elif current_color == 'blue' %}<span style="color:#4a8cff">Синий</span>
+          {% elif current_color == 'green' %}<span style="color:#4caf78">Зелёный</span>
           {% elif current_color == 'gold' %}<span style="color:#e6c04a">Золотой</span>
-          {% else %}{{ current_color }}{% endif %}
+          {% elif current_color == 'ice' %}<span style="color:#38bdf8">Ледяное сияние</span>
+          {% elif current_color == 'matrix' %}<span style="color:#4ade80">Матрица</span>
+          {% elif current_color == 'sunset' %}<span style="color:#f97316">Закат энтропии</span>
+          {% else %}Стандартная{% endif %}
         </p>
         <p class="mt-1 text-xs entropy-text-faint">Тема видна всем пользователям на вашем профиле.</p>
       </div>
@@ -109,5 +91,8 @@
     </div>
   {% endif %}
 
-  <p class="mt-8"><a href="{% url 'forum:post_list' %}" class="text-sm font-semibold hover:underline">&larr; На главную</a></p>
+  <p class="mt-8 flex gap-4">
+    <a href="{% url 'inventory' %}" class="text-sm font-semibold hover:underline">&larr; Инвентарь</a>
+    <a href="{% url 'forum:post_list' %}" class="text-sm font-semibold hover:underline">&larr; На главную</a>
+  </p>
 {% endblock %}

@@ -73,7 +73,8 @@
       {% if is_own_profile %}
       <div class="mt-6 flex flex-wrap gap-3">
         <a href="{% url 'streaks' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold">Система стриков</a>
-        <a href="{% url 'shop' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold">Магазин тем</a>
+        <a href="{% url 'shop' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold">Магазин</a>
+        <a href="{% url 'inventory' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold">Инвентарь</a>
       </div>
       {% endif %}
     </div>
@@ -162,7 +163,8 @@
       {% if is_own_profile %}
       <div class="mt-6 flex flex-wrap gap-3">
         <a href="{% url 'streaks' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Система стриков</a>
-        <a href="{% url 'shop' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Магазин тем</a>
+        <a href="{% url 'shop' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Магазин</a>
+        <a href="{% url 'inventory' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Инвентарь</a>
       </div>
       {% endif %}
     </div>

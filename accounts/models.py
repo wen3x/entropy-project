@@ -34,6 +34,20 @@ class User(AbstractUser):
     )
     has_basic_colors = models.BooleanField(default=False)
     has_gold_color = models.BooleanField(default=False)
+    owned_colors = models.JSONField(default=list, blank=True)
+
+    @property
+    def owned_colors_list(self):
+        """Все купленные цвета профиля."""
+        colors = list(self.owned_colors or [])
+        # Миграция со старыми полями
+        if self.has_basic_colors:
+            for c in ("ice", "matrix", "sunset"):
+                if c not in colors:
+                    colors.append(c)
+        if self.has_gold_color and "gold" not in colors:
+            colors.append("gold")
+        return colors
 
     def save(self, *args, **kwargs):
         if self._state.adding:
@@ -246,6 +260,9 @@ class Notification(models.Model):
         POST_DYING = "post_dying", "Пост умирает"
         QUEST_COMPLETE = "quest_complete", "Квест выполнен"
         NODE_RANDOM_POST = "node_random_post", "Рекомендация поста"
+        NODE_INACTIVE = "node_inactive", "Узел без активности"
+        NEW_COMMENT = "new_comment", "Новый комментарий"
+        COMMENT_REPLY = "comment_reply", "Ответ на комментарий"
         MENTION = "mention", "Упоминание"
         BAN = "ban", "Бан"
 

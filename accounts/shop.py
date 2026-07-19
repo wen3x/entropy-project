@@ -16,29 +16,63 @@ DEFAULT_SHOP_ITEMS = (
         "sort_order": 1,
     },
     {
-        "code": "profile-color-basic",
-        "title": "Цвет профиля (темы)",
-        "description": "Разблокирует темы: Ледяное сияние, Матрица, Закат энтропии. После покупки переключать их можно бесплатно.",
+        "code": "profile-color-ice",
+        "title": "Тема «Ледяное сияние»",
+        "description": "Голубой цвет профиля и подсветка ника.",
         "price_tokens": 500,
         "item_type": ShopItem.ItemType.PROFILE_COLOR_BASIC,
         "sort_order": 2,
     },
     {
+        "code": "profile-color-matrix",
+        "title": "Тема «Матрица»",
+        "description": "Зелёный цвет профиля и подсветка ника.",
+        "price_tokens": 500,
+        "item_type": ShopItem.ItemType.PROFILE_COLOR_BASIC,
+        "sort_order": 3,
+    },
+    {
+        "code": "profile-color-sunset",
+        "title": "Тема «Закат энтропии»",
+        "description": "Оранжевый цвет профиля и подсветка ника.",
+        "price_tokens": 500,
+        "item_type": ShopItem.ItemType.PROFILE_COLOR_BASIC,
+        "sort_order": 4,
+    },
+    {
         "code": "profile-color-gold",
-        "title": "Цвет профиля (ЗОЛОТОЙ)",
-        "description": "Разблокирует золотой цвет профиля с мягким свечением ника. После покупки активировать можно бесплатно.",
+        "title": "Тема «Золотой»",
+        "description": "Золотой цвет профиля с мягким свечением ника.",
         "price_tokens": 1000,
         "item_type": ShopItem.ItemType.PROFILE_COLOR_GOLD,
-        "sort_order": 3,
+        "sort_order": 5,
     },
 )
 
-BASIC_COLORS = frozenset({"ice", "matrix", "sunset"})
+# Маппинг кода товара → цвет профиля
+COLOR_CODE_MAP = {
+    "profile-color-ice": "ice",
+    "profile-color-matrix": "matrix",
+    "profile-color-sunset": "sunset",
+    "profile-color-gold": "gold",
+}
+
+COLOR_NAMES = {
+    "ice": "Ледяное сияние",
+    "matrix": "Матрица",
+    "sunset": "Закат энтропии",
+    "gold": "Золотой",
+    "red": "Красный",
+    "blue": "Синий",
+    "green": "Зелёный",
+}
 
 
 def ensure_default_shop_items():
     for data in DEFAULT_SHOP_ITEMS:
         ShopItem.objects.update_or_create(code=data["code"], defaults=data)
+    # Скрываем старый объединённый товар, если он ещё есть
+    ShopItem.objects.filter(code="profile-color-basic").update(visible_in_shop=False)
 
 
 def get_visible_shop_items():
@@ -62,33 +96,30 @@ def purchase_item(user: User, item: ShopItem, color: str = "") -> tuple[bool, st
             )
             return True, "Срок жизни аккаунта продлён на 30 дней."
 
-        if item.item_type == ShopItem.ItemType.PROFILE_COLOR_BASIC:
-            if color not in BASIC_COLORS:
-                return False, "Выберите тему: ice (Ледяное сияние), matrix (Матрица), sunset (Закат энтропии)."
-            if locked.has_basic_colors:
-                User.objects.filter(pk=locked.pk).update(profile_color=color)
-                return True, f"Цвет профиля изменён."
-            if locked.tokens < item.price_tokens:
-                return False, "Недостаточно токенов."
-            User.objects.filter(pk=locked.pk).update(
-                tokens=F("tokens") - item.price_tokens,
-                has_basic_colors=True,
-                profile_color=color,
-            )
-            return True, "Базовые цвета профиля разблокированы. Теперь переключать их можно бесплатно."
+        # Цвета профиля: определяем цвет по коду товара
+        target_color = COLOR_CODE_MAP.get(item.code)
+        if not target_color:
+            return False, "Неизвестный товар."
 
-        if item.item_type == ShopItem.ItemType.PROFILE_COLOR_GOLD:
-            if locked.has_gold_color:
-                User.objects.filter(pk=locked.pk).update(profile_color=User.ProfileColor.GOLD)
-                return True, "Золотой цвет профиля активирован."
-            if locked.tokens < item.price_tokens:
-                return False, "Недостаточно токенов."
-            User.objects.filter(pk=locked.pk).update(
-                tokens=F("tokens") - item.price_tokens,
-                has_gold_color=True,
-                profile_color=User.ProfileColor.GOLD,
-            )
-            return True, "Золотой цвет профиля разблокирован и активирован."
+        owned = locked.owned_colors_list
+
+        if target_color in owned:
+            # Уже куплено — просто активируем
+            User.objects.filter(pk=locked.pk).update(profile_color=target_color)
+            color_name = COLOR_NAMES.get(target_color, target_color)
+            return True, f"Тема «{color_name}» активирована."
+
+        if locked.tokens < item.price_tokens:
+            return False, "Недостаточно токенов."
+
+        new_owned = list(set(owned + [target_color]))
+        color_name = COLOR_NAMES.get(target_color, target_color)
+        User.objects.filter(pk=locked.pk).update(
+            tokens=F("tokens") - item.price_tokens,
+            owned_colors=new_owned,
+            profile_color=target_color,
+        )
+        return True, f"Тема «{color_name}» приобретена и активирована."
 
     return False, "Неизвестный тип товара."
 

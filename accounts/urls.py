@@ -12,6 +12,7 @@ urlpatterns = [
     path("profile/<str:username>/", views.profile_old_redirect, name="profile_detail_old"),
     path("streaks/", views.streaks_page, name="streaks"),
     path("shop/", views.shop_view, name="shop"),
+    path("inventory/", views.inventory_view, name="inventory"),
     path("notifications/", views.notifications_list, name="notifications_list"),
     path(
         "notifications/read/",

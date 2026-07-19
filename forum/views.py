@@ -43,11 +43,12 @@ import re
 from django.contrib.auth import get_user_model as get_user_model_func
 
 
-def notify_mentions(text, from_user, link=""):
+def notify_mentions(text, from_user, link="", *, is_comment=False):
     """Найти @username в тексте и отправить уведомление."""
     if not text:
         return
     User = get_user_model_func()
+    location = "комментарии" if is_comment else "посте"
     for match in re.finditer(r"@(\w+)", text):
         username = match.group(1)
         try:
@@ -56,7 +57,7 @@ def notify_mentions(text, from_user, link=""):
                 notify(
                     mentioned,
                     "mention",
-                    f"@{from_user.username} упомянул вас в своём посте.",
+                    f"@{from_user.username} упомянул вас в {location}.",
                     link=link,
                 )
         except User.DoesNotExist:
@@ -304,6 +305,16 @@ def _post_detail_view(request, slug, node=None):
                         parent=parent,
                         text=text,
                     )
+                    # Уведомление автору родительского комментария об ответе
+                    if parent.author != request.user:
+                        notify(
+                            parent.author,
+                            "comment_reply",
+                            f"@{request.user.username} ответил на ваш комментарий в посте «{post.title}».",
+                            link=post.get_absolute_url(),
+                        )
+                    # Упоминания в ответе
+                    notify_mentions(text, request.user, post.get_absolute_url(), is_comment=True)
                     return redirect("forum:post_detail", slug=post.slug)
             else:
                 comment_form = CommentForm(request.POST)
@@ -313,7 +324,15 @@ def _post_detail_view(request, slug, node=None):
                         c.post = post
                         c.author = request.user
                         c.save()
-                        notify_mentions(c.text, request.user, post.get_absolute_url())
+                        notify_mentions(c.text, request.user, post.get_absolute_url(), is_comment=True)
+                        # Уведомление автору поста о новом комментарии
+                        if post.author != request.user:
+                            notify(
+                                post.author,
+                                "new_comment",
+                                f"@{request.user.username} оставил комментарий к вашему посту «{post.title}».",
+                                link=post.get_absolute_url(),
+                            )
                         remaining_h = max(
                             0,
                             (post.expires_at - timezone.now()).total_seconds()

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Инвентарь{% endblock %}
+
+{% block content %}
+  <div class="mb-8 border-b entropy-border pb-6">
+    <h1 class="text-3xl font-extrabold uppercase tracking-tight">Инвентарь</h1>
+    <p class="mt-2 text-sm entropy-text-muted">Ваши предметы. Куплено тем: <span class="font-bold entropy-text-emphasis">{{ owned_count }}</span></p>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+      <p class="mb-4 border px-4 py-2 text-sm font-medium {% if msg.tags == 'success' %}entropy-border-muted{% else %}border-red-500 text-red-600{% endif %}">{{ msg }}</p>
+    {% endfor %}
+  {% endif %}
+
+  {% if theme_list %}
+    <div class="space-y-4">
+      {% for theme in theme_list %}
+        <article class="entropy-panel p-6" style="border-color: {{ theme.color }} !important;">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-3">
+                <span class="inline-block h-6 w-6 rounded-full shrink-0" style="background: {{ theme.color }}; box-shadow: 0 0 8px {{ theme.color }};"></span>
+                <div>
+                  <h2 class="text-lg font-bold" style="color: {{ theme.color }};">{{ theme.name }}</h2>
+                  {% if theme.is_active %}
+                    <span class="text-xs font-bold uppercase tracking-wide entropy-text-emphasis flex items-center gap-1 mt-0.5">
+                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Активна сейчас
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% if not theme.is_active %}
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="apply_theme">
+                <input type="hidden" name="theme_key" value="{{ theme.key }}">
+                <button type="submit" class="entropy-btn px-4 py-2 text-sm font-semibold" style="border-color: {{ theme.color }}; color: {{ theme.color }};">Применить</button>
+              </form>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="entropy-panel px-6 py-12 text-center entropy-text-faint">
+      <p class="text-lg font-bold mb-2">Инвентарь пуст</p>
+      <p class="text-sm">Купите темы в <a href="{% url 'shop' %}" class="font-semibold underline">Магазине</a>, чтобы они появились здесь.</p>
+    </div>
+  {% endif %}
+
+  {% if current_color != 'default' %}
+    <div class="mt-6 entropy-panel p-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-bold">Текущая тема активна</p>
+        <p class="mt-1 text-xs entropy-text-faint">Тема видна всем пользователям на вашем профиле.</p>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reset_theme">
+        <button type="submit" class="entropy-btn px-4 py-2 text-sm font-semibold">Сбросить до стандартной</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <p class="mt-8 flex gap-4">
+    <a href="{% url 'shop' %}" class="text-sm font-semibold hover:underline">&larr; В магазин</a>
+    <a href="{% url 'profile_detail' user.username %}" class="text-sm font-semibold hover:underline">&larr; В профиль</a>
+  </p>
+{% endblock %}
