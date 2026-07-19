@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .models import (
+    Complaint,
     Moderator,
     Notification,
     PushSubscription,
@@ -85,6 +86,13 @@ class ModeratorAdmin(admin.ModelAdmin):
     list_display = ("user", "node", "created_by", "created_at")
     list_filter = ("node",)
     search_fields = ("user__username",)
+
+
+@admin.register(Complaint)
+class ComplaintAdmin(admin.ModelAdmin):
+    list_display = ("reporter", "reason", "status", "content_type", "created_at")
+    list_filter = ("status", "reason")
+    search_fields = ("reporter__username", "message")
 
 
 @admin.register(UserDailyQuestCycle)

@@ -110,6 +110,9 @@ class Comment(models.Model):
         related_name="replies",
     )
     text = models.TextField()
+    # Cloudinary media
+    image = models.CharField(max_length=1024, blank=True, default="")
+    gif = models.CharField(max_length=1024, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     edited_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField(default=default_comment_expires)

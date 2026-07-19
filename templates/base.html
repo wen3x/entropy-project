@@ -163,6 +163,9 @@
       <a href="{% url 'forum:graveyard_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Кладбище</a>
       <a href="{% url 'shop' %}"                 class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Магазин</a>
       <a href="{% url 'streaks' %}"              class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Стрики</a>
+      {% if is_god or is_moderator %}
+      <a href="{% url 'complaints_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Жалобы</a>
+      {% endif %}
       <a href="{{ donation_alerts_url }}" target="_blank" rel="noopener noreferrer" class="da-btn">DonationAlerts</a>
       {% if is_god %}
       <a href="{% url 'secret_panel' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Секретная панель</a>
@@ -274,6 +277,14 @@
           </svg>
           Стрики
         </a>
+        {% if is_god or is_moderator %}
+        <a href="{% url 'complaints_list' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
+          <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+          Жалобы
+        </a>
+        {% endif %}
         <a href="{{ donation_alerts_url }}" target="_blank" rel="noopener noreferrer" class="da-btn" style="display: flex; align-items: center; gap: 0.75rem;">
           <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>

@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
 
@@ -292,6 +294,52 @@ class PushSubscription(models.Model):
         return f"Push sub: {self.user.username}"
 
 
+class Complaint(models.Model):
+    """Жалоба на пост или комментарий."""
+
+    class Reason(models.TextChoices):
+        SPAM = "spam", "Спам"
+        HARASSMENT = "harassment", "Оскорбления"
+        NSFW = "nsfw", "NSFW/18+"
+        RULE_BREAK = "rule_break", "Нарушение правил"
+        OTHER = "other", "Другое"
+
+    class Status(models.TextChoices):
+        NEW = "new", "Новая"
+        RESOLVED = "resolved", "Решена"
+        DISMISSED = "dismissed", "Отклонена"
+
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reported_complaints",
+    )
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
+    reason = models.CharField(max_length=20, choices=Reason.choices)
+    message = models.TextField(blank=True, default="")
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.NEW, db_index=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_complaints",
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        target = f"{self.content_type.model} #{self.object_id}"
+        return f"Жалоба от {self.reporter.username} на {target} — {self.get_reason_display()}"
+
+
 class Notification(models.Model):
     class Kind(models.TextChoices):
         POST_LIKED = "post_liked", "Лайк поста"
@@ -303,6 +351,7 @@ class Notification(models.Model):
         COMMENT_REPLY = "comment_reply", "Ответ на комментарий"
         MENTION = "mention", "Упоминание"
         BAN = "ban", "Бан"
+        COMPLAINT = "complaint", "Жалоба"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

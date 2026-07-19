@@ -22,22 +22,22 @@
 {% block content %}
   <article class="entropy-card p-4 sm:p-8 {% if post.is_golden %}post-golden{% endif %}">
     {# Meta row #}
-    <p class="text-xs entropy-text-faint">
+    <p class="text-xs entropy-text-faint flex flex-wrap items-center gap-x-1">
       {% if post.author.is_anonymous_mode %}
         <span class="entropy-text-muted">Аноним</span>
       {% else %}
         <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>@{{ post.author.username }}</a>
         {% if post.author.username == god_username %}
-          <span class="ml-1 border border-red-400 px-1 py-0.5 text-[9px] font-bold uppercase" style="color:#ef4444;border-color:#ef4444;">АДМИН</span>
+          <span class="border border-red-400 px-1 py-0.5 text-[9px] font-bold uppercase leading-none" style="color:#ef4444;border-color:#ef4444;">АДМИН</span>
         {% elif post.author.pk in moderator_ids %}
-          <span class="ml-1 border px-1 py-0.5 text-[9px] font-bold uppercase" style="color:#a855f7;border-color:#a855f7;">МОДЕРАТОР</span>
+          <span class="border px-1 py-0.5 text-[9px] font-bold uppercase leading-none" style="color:#a855f7;border-color:#a855f7;">МОДЕРАТОР</span>
         {% endif %}
       {% endif %}
-      {% if post.is_golden %}<span class="ml-2 border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-yellow-500">Золотой пост · 24ч</span>{% endif %}
+      {% if post.is_golden %}<span class="border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-yellow-500 leading-none">Золотой пост · 24ч</span>{% endif %}
       {% if post_node %}
-        &middot; <a href="{% url 'forum:node_detail' post_node.slug %}" class="hover:underline font-semibold">{{ post_node.name }}</a>
+        <span>&middot; <a href="{% url 'forum:node_detail' post_node.slug %}" class="hover:underline font-semibold">{{ post_node.name }}</a></span>
       {% endif %}
-      &middot; {{ post.created_at|date:"d.m.Y H:i" }}
+      <span>&middot; {{ post.created_at|date:"d.m.Y H:i" }}</span>
     </p>
 
     {# Title #}
@@ -106,10 +106,47 @@
           </button>
         </form>
       {% endif %}
+      {% if user.is_authenticated %}
+        <button type="button" class="entropy-btn px-3 py-1 text-xs font-semibold"
+                onclick="document.getElementById('complaint-form-post').classList.toggle('hidden')">
+          ⚑ Пожаловаться
+        </button>
+      {% endif %}
     </div>
 
     {% if post.is_golden %}
       <p class="mt-4 text-xs entropy-text-faint">Золотой пост: время не продлевается. Лайк = +10 токенов (один раз).</p>
+    {% endif %}
+
+    {# ── Complaint form for post (hidden) ── #}
+    {% if user.is_authenticated %}
+      <div id="complaint-form-post" class="hidden mt-4 border entropy-border p-4">
+        <p class="text-sm font-bold mb-3">Пожаловаться на пост</p>
+        <form method="post" action="{% url 'submit_complaint' %}" class="space-y-3">
+          {% csrf_token %}
+          <input type="hidden" name="content_type" value="post">
+          <input type="hidden" name="object_id" value="{{ post.pk }}">
+          <div>
+            <label class="block text-xs font-semibold entropy-text-soft">Причина *</label>
+            <select name="reason" required class="entropy-input w-full text-sm">
+              <option value="spam">Спам</option>
+              <option value="harassment">Оскорбления</option>
+              <option value="nsfw">NSFW/18+</option>
+              <option value="rule_break">Нарушение правил</option>
+              <option value="other">Другое</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold entropy-text-soft">Сообщение (необязательно)</label>
+            <textarea name="message" rows="2" class="entropy-input w-full text-sm" placeholder="Подробнее о проблеме…"></textarea>
+          </div>
+          <div class="flex gap-2">
+            <button type="submit" class="entropy-btn-invert px-4 py-2 text-sm font-semibold">Отправить жалобу</button>
+            <button type="button" class="entropy-btn px-4 py-2 text-sm"
+                    onclick="document.getElementById('complaint-form-post').classList.add('hidden')">Отмена</button>
+          </div>
+        </form>
+      </div>
     {% endif %}
   </article>
 
@@ -117,10 +154,28 @@
     <h2 class="text-lg font-extrabold uppercase tracking-tight border-b entropy-border pb-2">Комментарии</h2>
 
     {% if user.is_authenticated and post.expires_at > now %}
-      <form method="post" class="mt-4 entropy-card p-4">
+      <form method="post" enctype="multipart/form-data" class="mt-4 entropy-card p-4">
         {% csrf_token %}
         {{ comment_form.text }}
-        <button type="submit" class="entropy-btn-primary mt-3 px-4 py-2 text-sm font-semibold">Оставить мнение</button>
+        <div class="mt-2 flex flex-wrap items-center gap-3">
+          <button type="submit" class="entropy-btn-primary px-4 py-2 text-sm font-semibold">Оставить мнение</button>
+          <label for="comment-media-input" class="entropy-btn px-3 py-2 text-xs font-semibold cursor-pointer">
+            📷 Прикрепить фото/GIF
+          </label>
+          {{ comment_form.comment_media_file }}
+          <span id="comment-media-name" class="text-xs entropy-text-faint hidden"></span>
+          <script>
+            document.getElementById('comment-media-input').addEventListener('change', function() {
+              var name = document.getElementById('comment-media-name');
+              if (this.files && this.files[0]) {
+                name.textContent = '📎 ' + this.files[0].name;
+                name.classList.remove('hidden');
+              } else {
+                name.classList.add('hidden');
+              }
+            });
+          </script>
+        </div>
       </form>
     {% elif not user.is_authenticated %}
       <p class="mt-4 text-sm entropy-text-muted"><a href="{% url 'login' %}" class="underline font-semibold">Войдите</a>, чтобы комментировать.</p>

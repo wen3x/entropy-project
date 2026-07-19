@@ -37,4 +37,9 @@ urlpatterns = [
     path("online/", views.online_count, name="online_count"),
     # Бесплатный крон (cron-job.org → этот URL)
     path("cron/send-notifications/", views.cron_trigger, name="cron_trigger"),
+    # Жалобы
+    path("complaints/", views.complaints_list, name="complaints_list"),
+    path("complaints/submit/", views.submit_complaint, name="submit_complaint"),
+    path("complaints/<int:pk>/resolve/", views.resolve_complaint, name="resolve_complaint"),
+    path("complaints/<int:pk>/dismiss/", views.dismiss_complaint, name="dismiss_complaint"),
 ]

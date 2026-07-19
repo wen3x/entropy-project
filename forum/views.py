@@ -96,12 +96,6 @@ def can_moderate(user, node=None) -> bool:
         return False
     if is_god(user):
         return True
-    from accounts.models import Moderator
-    q = Q(user=user)
-    if node:
-        q &= (Q(node=node) | Q(node__isnull=True))
-    else:
-        q &= Q(node__isnull=True)
     try:
         from accounts.models import Moderator
         q = Q(user=user)
@@ -181,6 +175,22 @@ def comment_like_count(comment: Comment) -> int:
     return Like.objects.filter(
         content_type=comment_ct, object_id=comment.pk, is_active=True
     ).count()
+
+
+def _upload_comment_media(c, file_obj):
+    """Загрузить медиа в Cloudinary и привязать к комментарию/ответу."""
+    if not file_obj:
+        return
+    url = upload_to_cloudinary(file_obj, resource_type="image")
+    if not url:
+        return
+    name = getattr(file_obj, "name", "").lower()
+    if name.endswith(".gif"):
+        c.gif = url
+        c.save(update_fields=["gif"])
+    else:
+        c.image = url
+        c.save(update_fields=["image"])
 
 
 def extend_post_on_comment(post: Post, user) -> bool:
@@ -355,12 +365,14 @@ def _post_detail_view(request, slug, node=None):
                 )
                 text = request.POST.get("text", "").strip()
                 if text:
-                    Comment.objects.create(
+                    c = Comment.objects.create(
                         post=post,
                         author=request.user,
                         parent=parent,
                         text=text,
                     )
+                    # Загрузка медиа для ответа
+                    _upload_comment_media(c, request.FILES.get("reply_media_file"))
                     # Уведомление автору родительского комментария об ответе
                     if parent.author != request.user:
                         notify(
@@ -373,13 +385,15 @@ def _post_detail_view(request, slug, node=None):
                     notify_mentions(text, request.user, post.get_absolute_url(), is_comment=True)
                     return redirect("forum:post_detail", slug=post.slug)
             else:
-                comment_form = CommentForm(request.POST)
+                comment_form = CommentForm(request.POST, request.FILES)
                 if comment_form.is_valid():
                     with transaction.atomic():
                         c = comment_form.save(commit=False)
                         c.post = post
                         c.author = request.user
                         c.save()
+                        # Загрузка медиа для комментария
+                        _upload_comment_media(c, request.FILES.get("comment_media_file"))
                         notify_mentions(c.text, request.user, post.get_absolute_url(), is_comment=True)
                         # Уведомление автору поста о новом комментарии
                         if post.author != request.user:

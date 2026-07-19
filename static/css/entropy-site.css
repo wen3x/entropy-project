@@ -874,6 +874,27 @@ article {
   z-index: 2;
 }
 
+/* ── Comment media (small thumbnails) ── */
+.comment-media-img {
+  width: 100%;
+  max-width: 200px;
+  max-height: 120px;
+  object-fit: cover;
+  border: var(--entropy-border-width) solid var(--entropy-border);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  display: block;
+}
+
+.comment-media-img:hover {
+  opacity: 0.85;
+}
+
+.comment-media-img--gif {
+  max-width: 240px;
+  max-height: 150px;
+}
+
 /* ── Post media (image / gif / audio in cards) ── */
 .post-media {
   position: relative;

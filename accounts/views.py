@@ -524,3 +524,181 @@ def secret_panel(request):
             "anonymous_mode": request.user.is_anonymous_mode,
         },
     )
+
+
+# ── ЖАЛОБЫ ───────────────────────────────────────────────────────────────────
+
+
+def _can_handle_complaints(user) -> bool:
+    """Проверить, может ли пользователь просматривать/обрабатывать жалобы."""
+    if not user.is_authenticated:
+        return False
+    god_username = getattr(settings, 'GOD_USERNAME', 'admin')
+    if user.username == god_username:
+        return True
+    from .models import Moderator
+    # Модератор может видеть жалобы, если он глобальный или привязан к любому узлу
+    return Moderator.objects.filter(user=user).exists()
+
+
+@login_required
+def complaints_list(request):
+    """Страница со списком жалоб (доступна администратору и модераторам)."""
+    if not _can_handle_complaints(request.user):
+        return HttpResponseForbidden("Доступ запрещён.")
+
+    from .models import Complaint
+    from django.contrib.contenttypes.models import ContentType
+
+    status_filter = request.GET.get("status", "")
+    complaints_qs = Complaint.objects.select_related("reporter", "resolved_by").order_by("-created_at")
+    if status_filter in ("new", "resolved", "dismissed"):
+        complaints_qs = complaints_qs.filter(status=status_filter)
+
+    complaints = list(complaints_qs[:100])
+
+    # Batch-load reported objects (избегаем N+1)
+    post_ct = ContentType.objects.get_for_model(Post)
+    from forum.models import Comment as ForumComment
+    post_ids = [c.object_id for c in complaints if c.content_type_id == post_ct.pk]
+    comment_ids = [c.object_id for c in complaints if c.content_type_id != post_ct.pk]
+    posts_map = {p.pk: p for p in Post.objects.filter(pk__in=post_ids).only("title", "slug", "is_active", "node_id")}
+    comments_map = {c.pk: c for c in ForumComment.objects.filter(pk__in=comment_ids).select_related("post").only(
+        "text", "post_id", "is_active"
+    )}
+    for c in complaints:
+        c.reported_object = posts_map.get(c.object_id) if c.content_type_id == post_ct.pk else comments_map.get(c.object_id)
+
+    return render(
+        request,
+        "accounts/complaints.html",
+        {
+            "complaints": complaints,
+            "current_status": status_filter,
+        },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def submit_complaint(request):
+    """Отправить жалобу на пост или комментарий."""
+    from .models import Complaint
+    from django.contrib.contenttypes.models import ContentType
+
+    content_type_name = request.POST.get("content_type", "")
+    object_id = request.POST.get("object_id", "")
+    reason = request.POST.get("reason", "")
+    message = request.POST.get("message", "").strip()
+
+    if not content_type_name or not object_id or not reason:
+        messages.error(request, "Заполните обязательные поля.")
+        return redirect(request.META.get("HTTP_REFERER", "/"))
+
+    try:
+        object_id = int(object_id)
+    except (ValueError, TypeError):
+        messages.error(request, "Некорректный ID объекта.")
+        return redirect(request.META.get("HTTP_REFERER", "/"))
+
+    # Определяем content type
+    ct_map = {
+        "post": ContentType.objects.get_for_model(Post),
+    }
+    from forum.models import Comment
+    ct_map["comment"] = ContentType.objects.get_for_model(Comment)
+
+    ct = ct_map.get(content_type_name)
+    if not ct:
+        messages.error(request, "Некорректный тип контента.")
+        return redirect(request.META.get("HTTP_REFERER", "/"))
+
+    # Проверяем, что объект существует
+    model_class = ct.model_class()
+    obj = model_class.objects.filter(pk=object_id).first()
+    if not obj:
+        messages.error(request, "Объект не найден.")
+        return redirect(request.META.get("HTTP_REFERER", "/"))
+
+    # Проверяем, не отправлял ли пользователь уже жалобу на этот объект
+    existing = Complaint.objects.filter(
+        reporter=request.user,
+        content_type=ct,
+        object_id=object_id,
+        status="new",
+    ).exists()
+    if existing:
+        messages.info(request, "Вы уже отправляли жалобу на этот контент.")
+        return redirect(request.META.get("HTTP_REFERER", "/"))
+
+    complaint = Complaint.objects.create(
+        reporter=request.user,
+        content_type=ct,
+        object_id=object_id,
+        reason=reason,
+        message=message,
+    )
+
+    # Уведомляем администратора и всех модераторов
+    god_username = getattr(settings, 'GOD_USERNAME', 'admin')
+    target_type = "пост" if content_type_name == "post" else "комментарий"
+    reason_label = dict(Complaint.Reason.choices).get(reason, reason)
+    note_msg = f"Новая жалоба от @{request.user.username} на {target_type}: {reason_label}."
+    note_link = "/accounts/complaints/"
+
+    # Собираем получателей: god + все модераторы (кроме автора жалобы)
+    from .models import Moderator, Notification
+    from django.contrib.auth import get_user_model as gum
+    UserModel = gum()
+
+    mod_user_ids = set(Moderator.objects.values_list("user_id", flat=True).distinct())
+    god_user_pk = UserModel.objects.filter(username=god_username).values_list("pk", flat=True).first()
+    if god_user_pk:
+        mod_user_ids.add(god_user_pk)
+    # Исключаем автора жалобы
+    mod_user_ids.discard(request.user.pk)
+
+    if mod_user_ids:
+        from accounts.notifications import notify
+        for target_user in UserModel.objects.filter(pk__in=mod_user_ids):
+            notify(
+                target_user,
+                Notification.Kind.COMPLAINT,
+                note_msg,
+                link=note_link,
+            )
+
+    messages.success(request, "Жалоба отправлена. Спасибо!")
+    return redirect(request.META.get("HTTP_REFERER", "/"))
+
+
+@login_required
+@require_http_methods(["POST"])
+def resolve_complaint(request, pk):
+    """Отметить жалобу как решённую."""
+    if not _can_handle_complaints(request.user):
+        return HttpResponseForbidden("Доступ запрещён.")
+    from .models import Complaint
+    complaint = get_object_or_404(Complaint, pk=pk)
+    complaint.status = Complaint.Status.RESOLVED
+    complaint.resolved_by = request.user
+    complaint.resolved_at = timezone.now()
+    complaint.save(update_fields=["status", "resolved_by", "resolved_at"])
+    messages.success(request, "Жалоба отмечена как решённая.")
+    return redirect("complaints_list")
+
+
+@login_required
+@require_http_methods(["POST"])
+def dismiss_complaint(request, pk):
+    """Отклонить жалобу."""
+    if not _can_handle_complaints(request.user):
+        return HttpResponseForbidden("Доступ запрещён.")
+    from .models import Complaint
+    complaint = get_object_or_404(Complaint, pk=pk)
+    complaint.status = Complaint.Status.DISMISSED
+    complaint.resolved_by = request.user
+    complaint.resolved_at = timezone.now()
+    complaint.save(update_fields=["status", "resolved_by", "resolved_at"])
+    messages.info(request, "Жалоба отклонена.")
+    return redirect("complaints_list")

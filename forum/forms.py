@@ -98,6 +98,17 @@ class NodeForm(forms.ModelForm):
 
 
 class CommentForm(forms.ModelForm):
+    """Форма комментария с поддержкой загрузки фото/GIF."""
+    comment_media_file = forms.FileField(
+        required=False,
+        label="Прикрепить фото/GIF",
+        widget=forms.FileInput(attrs={
+            "class": "hidden",
+            "accept": "image/*,.gif",
+            "id": "comment-media-input",
+        }),
+    )
+
     class Meta:
         model = Comment
         fields = ("text",)
@@ -114,6 +125,16 @@ class CommentForm(forms.ModelForm):
 
 
 class ReplyForm(forms.ModelForm):
+    """Форма ответа с поддержкой загрузки фото/GIF."""
+    reply_media_file = forms.FileField(
+        required=False,
+        label="Прикрепить фото/GIF",
+        widget=forms.FileInput(attrs={
+            "class": "hidden",
+            "accept": "image/*,.gif",
+        }),
+    )
+
     class Meta:
         model = Comment
         fields = ("text",)

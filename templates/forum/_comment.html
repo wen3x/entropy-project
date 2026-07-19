@@ -3,7 +3,7 @@
 <li class="entropy-card p-4">
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0 flex-1">
-      <p class="text-sm font-bold">
+      <p class="text-sm font-bold flex flex-wrap items-center gap-x-1">
         {% if comment.author.is_anonymous_mode %}
           <span class="entropy-text-muted">Аноним</span>
         {% else %}
@@ -12,22 +12,32 @@
             @{{ comment.author.username }}
           </a>
           {% if comment.author.username == god_username %}
-            <span class="ml-1 border border-red-400 px-1 py-0.5 text-[9px] font-bold uppercase" style="color:#ef4444;border-color:#ef4444;">АДМИН</span>
+            <span class="border border-red-400 px-1 py-0.5 text-[9px] font-bold uppercase leading-none" style="color:#ef4444;border-color:#ef4444;">АДМИН</span>
           {% elif comment.author.pk in moderator_ids %}
-            <span class="ml-1 border px-1 py-0.5 text-[9px] font-bold uppercase" style="color:#a855f7;border-color:#a855f7;">МОДЕРАТОР</span>
+            <span class="border px-1 py-0.5 text-[9px] font-bold uppercase leading-none" style="color:#a855f7;border-color:#a855f7;">МОДЕРАТОР</span>
           {% endif %}
         {% endif %}
-        {% if comment.is_approved %}<span class="ml-2 entropy-badge-invert px-2 py-0.5 text-[10px] font-extrabold uppercase">Одобрено</span>{% endif %}
+        {% if comment.is_approved %}<span class="entropy-badge-invert px-2 py-0.5 text-[10px] font-extrabold uppercase leading-none">Одобрено</span>{% endif %}
       </p>
       <p class="mt-2 whitespace-pre-wrap text-sm entropy-text-soft">{{ comment.text|mention_links|safe }}
         {% if comment.is_edited %}<span class="ml-1 text-[10px] entropy-text-faint" title="{{ comment.edited_at|date:'d.m.Y H:i' }}">(Изменено)</span>{% endif %}
       </p>
+      {% if comment.image %}
+        <img src="{{ comment.image }}" alt="" class="comment-media-img mt-2" loading="lazy" onclick="window.open(this.src,'_blank')">
+      {% endif %}
+      {% if comment.gif %}
+        <img src="{{ comment.gif }}" alt="" class="comment-media-img comment-media-img--gif mt-2" loading="lazy" onclick="window.open(this.src,'_blank')">
+      {% endif %}
       {% if user.is_authenticated and post.expires_at > now %}
-      <form method="post" class="mt-3 flex gap-2">
+      <form method="post" enctype="multipart/form-data" class="mt-3 flex flex-wrap items-center gap-2">
         {% csrf_token %}
         <input type="hidden" name="reply_to" value="{{ comment.pk }}">
-        <input type="text" name="text" maxlength="2000" placeholder="Ответ…" class="entropy-input flex-1 text-xs" required>
+        <input type="text" name="text" maxlength="2000" placeholder="Ответ…" class="entropy-input flex-1 text-xs min-w-[120px]" required>
         <button type="submit" class="entropy-btn px-2 py-1 text-xs font-semibold">Ответ</button>
+        <label class="entropy-btn px-2 py-1 text-[10px] font-semibold cursor-pointer">
+          📷
+          <input type="file" name="reply_media_file" accept="image/*,.gif" class="hidden" onchange="this.form.querySelector('input[name=text]').placeholder='Файл: '+this.files[0].name">
+        </label>
       </form>
       {% endif %}
       {% if comment.children %}
@@ -86,6 +96,28 @@
           {% csrf_token %}
           <button type="submit" class="entropy-btn-invert px-2 py-1 text-[10px] font-semibold">Удалить</button>
         </form>
+      {% endif %}
+      {% if user.is_authenticated %}
+        <button type="button" class="entropy-btn px-2 py-1 text-[10px] font-semibold mt-1"
+                onclick="document.getElementById('complaint-comment-{{ comment.pk }}').classList.toggle('hidden')">
+          ⚑ Пожаловаться
+        </button>
+        <div id="complaint-comment-{{ comment.pk }}" class="hidden mt-2">
+          <form method="post" action="{% url 'submit_complaint' %}" class="space-y-1">
+            {% csrf_token %}
+            <input type="hidden" name="content_type" value="comment">
+            <input type="hidden" name="object_id" value="{{ comment.pk }}">
+            <select name="reason" required class="entropy-input w-full text-[10px] py-0.5">
+              <option value="spam">Спам</option>
+              <option value="harassment">Оскорбления</option>
+              <option value="nsfw">NSFW/18+</option>
+              <option value="rule_break">Нарушение правил</option>
+              <option value="other">Другое</option>
+            </select>
+            <input type="text" name="message" class="entropy-input w-full text-[10px] py-0.5" placeholder="Подробнее (необязательно)" maxlength="500">
+            <button type="submit" class="entropy-btn-invert px-2 py-0.5 text-[10px] font-semibold w-full">Отправить</button>
+          </form>
+        </div>
       {% endif %}
     </div>
   </div>
