@@ -493,6 +493,31 @@ html[data-site-theme="dark"] .entropy-theme-toggle .theme-icon-dark  { display: 
   }
 }
 
+/* ── Fade-in animation for post cards ── */
+@keyframes entropy-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.post-card-fade-in {
+  animation: entropy-fade-in 0.4s ease-out both;
+}
+
+.post-card-fade-in:nth-child(1) { animation-delay: 0s; }
+.post-card-fade-in:nth-child(2) { animation-delay: 0.04s; }
+.post-card-fade-in:nth-child(3) { animation-delay: 0.08s; }
+.post-card-fade-in:nth-child(4) { animation-delay: 0.12s; }
+.post-card-fade-in:nth-child(5) { animation-delay: 0.16s; }
+.post-card-fade-in:nth-child(6) { animation-delay: 0.20s; }
+.post-card-fade-in:nth-child(7) { animation-delay: 0.24s; }
+.post-card-fade-in:nth-child(8) { animation-delay: 0.28s; }
+
 /* ── Post effects ── */
 @keyframes entropy-shake {
   0%, 100% { transform: translateX(0); }
@@ -544,6 +569,34 @@ html[data-site-theme="dark"] .post-golden {
 }
 
 .da-btn:active {
+  box-shadow: none;
+  transform: translate(3px, 3px);
+}
+
+/* ── GitHub (neobrutalist, black-purple) ── */
+.github-btn {
+  display: block;
+  text-align: center;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e0d0ff;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d1b69 50%, #1a0a2e 100%);
+  border: var(--entropy-border-width) solid #7c3aed;
+  min-height: 2.75rem;
+  border-radius: 0;
+  box-shadow: 3px 3px 0 0 #7c3aed;
+  transition: box-shadow 0.15s ease, transform 0.1s ease, filter 0.2s ease;
+}
+
+.github-btn:hover {
+  color: #f0e6ff;
+  filter: brightness(1.15);
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 0 #7c3aed, 0 0 18px rgba(124, 58, 237, 0.45);
+}
+
+.github-btn:active {
   box-shadow: none;
   transform: translate(3px, 3px);
 }

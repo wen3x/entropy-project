@@ -64,7 +64,8 @@
 
         <div id="media-file-group">
           <label for="id_media_file" class="block text-sm font-semibold entropy-text-soft">Файл</label>
-          <input type="file" name="media_file" id="id_media_file" class="entropy-input w-full px-3 py-2 text-sm">
+          <input type="file" name="media_file" id="id_media_file" class="entropy-input w-full px-3 py-2 text-sm"
+                 data-max-size="5242880" data-max-size-gif="10485760">
           {% if form.media_file.errors %}<p class="mt-1 text-sm font-medium entropy-text-soft">{{ form.media_file.errors.0 }}</p>{% endif %}
         </div>
 

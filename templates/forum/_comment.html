@@ -29,15 +29,21 @@
         <img src="{{ comment.gif }}" alt="" class="comment-media-img comment-media-img--gif mt-2" loading="lazy" onclick="window.open(this.src,'_blank')">
       {% endif %}
       {% if user.is_authenticated and post.expires_at > now %}
-      <form method="post" enctype="multipart/form-data" class="mt-3 flex flex-wrap items-center gap-2">
+      <form method="post" enctype="multipart/form-data" class="mt-3 comment-reply-form">
         {% csrf_token %}
         <input type="hidden" name="reply_to" value="{{ comment.pk }}">
-        <input type="text" name="text" maxlength="2000" placeholder="Ответ…" class="entropy-input flex-1 text-xs min-w-[120px]" required>
-        <button type="submit" class="entropy-btn px-2 py-1 text-xs font-semibold">Ответ</button>
-        <label class="entropy-btn px-2 py-1 text-[10px] font-semibold cursor-pointer">
-          📷
-          <input type="file" name="reply_media_file" accept="image/*,.gif" class="hidden" onchange="this.form.querySelector('input[name=text]').placeholder='Файл: '+this.files[0].name">
-        </label>
+        <div class="flex flex-wrap items-center gap-2">
+          <input type="text" name="text" maxlength="2000" placeholder="Ответ…" class="entropy-input flex-1 text-xs min-w-[120px]" required>
+          <button type="submit" class="entropy-btn px-2 py-1 text-xs font-semibold">Ответ</button>
+          <label class="entropy-btn px-2 py-1 text-[10px] font-semibold cursor-pointer">
+            📷
+            <input type="file" name="reply_media_file" accept="image/*,.gif" class="hidden reply-media-input" data-comment-pk="{{ comment.pk }}">
+          </label>
+        </div>
+        <div id="reply-preview-{{ comment.pk }}" class="mt-1 hidden relative inline-block">
+          <img id="reply-preview-img-{{ comment.pk }}" src="" alt="preview" class="comment-media-img" style="max-width:100px;max-height:70px;">
+          <button type="button" class="reply-preview-remove absolute -top-2 -right-2 entropy-btn-invert w-4 h-4 flex items-center justify-center text-[8px] leading-none p-0 min-h-0" data-comment-pk="{{ comment.pk }}" title="Удалить">✕</button>
+        </div>
       </form>
       {% endif %}
       {% if comment.children %}

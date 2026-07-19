@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Нет соединения — Entropy{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center py-20 text-center">
+  <svg class="h-16 w-16 mb-6 entropy-text-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-width="1.5" d="M18.364 5.636a9 9 0 010 12.728m-2.829-2.829a5 5 0 000-7.07m-4.243 4.243a1 1 0 010-1.414M3 3l18 18"/>
+  </svg>
+  <h1 class="text-2xl font-extrabold uppercase tracking-tight">Нет соединения</h1>
+  <p class="mt-3 text-sm entropy-text-muted max-w-md">
+    Вы не подключены к интернету. Некоторые страницы могут быть недоступны.
+  </p>
+  <p class="mt-1 text-sm entropy-text-faint">
+    Попробуйте перезагрузить страницу, когда соединение восстановится.
+  </p>
+  <button onclick="window.location.reload()" class="entropy-btn-primary mt-8 px-6 py-3 text-sm font-semibold">
+    Перезагрузить
+  </button>
+</div>
+{% endblock %}

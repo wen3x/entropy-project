@@ -164,18 +164,50 @@
           </label>
           {{ comment_form.comment_media_file }}
           <span id="comment-media-name" class="text-xs entropy-text-faint hidden"></span>
-          <script>
-            document.getElementById('comment-media-input').addEventListener('change', function() {
-              var name = document.getElementById('comment-media-name');
+        </div>
+        <div id="comment-media-preview" class="mt-2 hidden relative inline-block">
+          <img id="comment-media-preview-img" src="" alt="preview" class="comment-media-img" style="max-width:150px;max-height:90px;">
+          <button type="button" id="comment-media-remove" class="absolute -top-2 -right-2 entropy-btn-invert w-5 h-5 flex items-center justify-center text-[10px] leading-none p-0 min-h-0" title="Удалить">✕</button>
+        </div>
+        <script>
+          (function() {
+            var input = document.getElementById('comment-media-input');
+            var name = document.getElementById('comment-media-name');
+            var preview = document.getElementById('comment-media-preview');
+            var previewImg = document.getElementById('comment-media-preview-img');
+            var removeBtn = document.getElementById('comment-media-remove');
+            if (!input) return;
+            input.addEventListener('change', function() {
               if (this.files && this.files[0]) {
-                name.textContent = '📎 ' + this.files[0].name;
+                var file = this.files[0];
+                var isGif = file.name.toLowerCase().endsWith('.gif');
+                var maxSize = isGif ? (10 * 1024 * 1024) : (5 * 1024 * 1024);
+                if (file.size > maxSize) {
+                  var mb = (maxSize / (1024*1024)).toFixed(0);
+                  showToast('Файл слишком большой. Максимум ' + mb + ' MB.', true);
+                  this.value = '';
+                  return;
+                }
+                name.textContent = '📎 ' + file.name;
                 name.classList.remove('hidden');
+                previewImg.src = URL.createObjectURL(file);
+                preview.classList.remove('hidden');
               } else {
                 name.classList.add('hidden');
+                preview.classList.add('hidden');
               }
             });
-          </script>
-        </div>
+            if (removeBtn) {
+              removeBtn.addEventListener('click', function() {
+                input.value = '';
+                name.classList.add('hidden');
+                preview.classList.add('hidden');
+                if (previewImg.src) URL.revokeObjectURL(previewImg.src);
+                previewImg.src = '';
+              });
+            }
+          })();
+        </script>
       </form>
     {% elif not user.is_authenticated %}
       <p class="mt-4 text-sm entropy-text-muted"><a href="{% url 'login' %}" class="underline font-semibold">Войдите</a>, чтобы комментировать.</p>
@@ -228,6 +260,47 @@
   }
   tick(); setInterval(tick, 1000);
 })();
+
+// ── Reply media preview ──
+document.addEventListener('change', function (e) {
+  var input = e.target.closest('.reply-media-input');
+  if (!input) return;
+  var pk = input.getAttribute('data-comment-pk');
+  var preview = document.getElementById('reply-preview-' + pk);
+  var img = document.getElementById('reply-preview-img-' + pk);
+  if (!preview || !img) return;
+  if (input.files && input.files[0]) {
+    var file = input.files[0];
+    var isGif = file.name.toLowerCase().endsWith('.gif');
+    var maxSize = isGif ? (10 * 1024 * 1024) : (5 * 1024 * 1024);
+    if (file.size > maxSize) {
+      var mb = (maxSize / (1024*1024)).toFixed(0);
+      showToast('Файл слишком большой. Максимум ' + mb + ' MB.', true);
+      input.value = '';
+      return;
+    }
+    if (img._lastUrl) URL.revokeObjectURL(img._lastUrl);
+    img._lastUrl = URL.createObjectURL(file);
+    img.src = img._lastUrl;
+    preview.classList.remove('hidden');
+  } else {
+    preview.classList.add('hidden');
+  }
+});
+
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.reply-preview-remove');
+  if (!btn) return;
+  var pk = btn.getAttribute('data-comment-pk');
+  var form = btn.closest('.comment-reply-form');
+  if (!form) return;
+  var input = form.querySelector('.reply-media-input');
+  var preview = document.getElementById('reply-preview-' + pk);
+  var img = document.getElementById('reply-preview-img-' + pk);
+  if (input) input.value = '';
+  if (preview) preview.classList.add('hidden');
+  if (img && img._lastUrl) { URL.revokeObjectURL(img._lastUrl); img._lastUrl = null; img.src = ''; }
+});
 
 // ── Comment editing (inline) ──
 document.addEventListener('click', function (e) {

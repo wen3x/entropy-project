@@ -38,4 +38,5 @@ def site_context(request):
         "unread_notifications": unread_notifications,
         "donation_alerts_url": settings.DONATION_ALERTS_URL,
         "active_ban": active_ban,
+        "recaptcha_site_key": getattr(settings, 'RECAPTCHA_SITE_KEY', ''),
     }

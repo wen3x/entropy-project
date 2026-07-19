@@ -7,7 +7,7 @@
     <h1 class="text-2xl font-extrabold uppercase tracking-tight">Вход</h1>
     <p class="mt-1 text-sm entropy-text-faint">Войдите, чтобы постить и получать награды.</p>
     {% if form.errors %}<p class="mt-4 border entropy-border px-3 py-2 text-sm font-medium">Неверное имя или пароль.</p>{% endif %}
-    <form method="post" class="mt-6 space-y-4">
+    <form method="post" class="mt-6 space-y-4" id="login-form">
       {% csrf_token %}
       {% for field in form %}
         <div>
@@ -15,8 +15,27 @@
           <div class="mt-1">{{ field }}</div>
         </div>
       {% endfor %}
+      {{ form.g_recaptcha_response }}
       <button type="submit" class="entropy-btn-primary w-full py-2.5 text-sm font-semibold">Войти</button>
     </form>
     <p class="mt-6 text-center text-sm entropy-text-faint">Нет аккаунта? <a href="{% url 'register' %}" class="underline font-semibold entropy-text-emphasis">Регистрация</a></p>
   </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if recaptcha_site_key %}
+<script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
+<script>
+document.getElementById('login-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var form = this;
+  grecaptcha.ready(function() {
+    grecaptcha.execute('{{ recaptcha_site_key }}', {action: 'login'}).then(function(token) {
+      form.querySelector('[name="g_recaptcha_response"]').value = token;
+      HTMLFormElement.prototype.submit.call(form);
+    });
+  });
+});
+</script>
+{% endif %}
 {% endblock %}

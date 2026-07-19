@@ -108,103 +108,23 @@
     </p>
   {% endif %}
 
-  {# ── Two-column post grid on desktop, single column on mobile (Tailwind) ── #}
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-    {% for post in posts %}
-      <article class="entropy-card post-card p-4 sm:p-6 {% if post.is_golden %}post-golden{% elif post.is_pinned %}post-pinned{% endif %}" data-expires="{{ post.expires_at.isoformat }}" style="position:relative;">
-        <div class="post-card-inner">
-          {# Meta row: author, node, badge #}
-          <p class="text-xs entropy-text-faint post-meta flex flex-wrap items-center gap-x-1">
-            {% if post.author.is_anonymous_mode %}
-              <span class="entropy-text-muted">Аноним</span>
-            {% else %}
-              <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>@{{ post.author.username }}</a>
-              {% if post.author.username == god_username %}
-                <span class="border border-red-400 px-1 py-0.5 text-[9px] font-bold uppercase leading-none" style="color:#ef4444;border-color:#ef4444;">АДМИН</span>
-              {% elif post.author.pk in moderator_ids %}
-                <span class="border px-1 py-0.5 text-[9px] font-bold uppercase leading-none" style="color:#a855f7;border-color:#a855f7;">МОДЕРАТОР</span>
-              {% endif %}
-            {% endif %}
-            {% if post.node %}
-              <a href="{% url 'forum:node_detail' post.node.slug %}" class="hover:underline font-semibold">{{ post.node.name }}</a>
-            {% endif %}
-            {% if post.is_golden %}
-              <span class="border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-yellow-500 leading-none">Золотой</span>
-            {% elif post.is_pinned %}
-              <span class="border entropy-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest leading-none">Закреплён</span>
-            {% endif %}
-            <span>&middot; {{ post.created_at|date:"d.m.Y H:i" }}</span>
-          </p>
+  {# ── Post grid + infinite scroll container ── #}
+  <div id="post-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    {% include "forum/_post_card.html" %}
+  </div>
 
-          {# Title #}
-          <h2 class="mt-2 text-xl font-bold post-card-title">
-            <a href="{{ post.get_absolute_url }}" class="post-card-link">{{ post.title }}</a>
-          </h2>
-
-          {# Media: image / gif / audio #}
-          <div class="post-media mt-3">
-            {% if post.image %}
-              <img src="{{ post.image }}" alt="" class="post-media-img" loading="lazy" onclick="window.open(this.src,'_blank')">
-            {% endif %}
-            {% if post.gif %}
-              <img src="{{ post.gif }}" alt="" class="post-media-img" loading="lazy" onclick="window.open(this.src,'_blank')">
-            {% endif %}
-            {% if post.audio %}
-              <audio controls class="post-media-audio" preload="none">
-                <source src="{{ post.audio }}">
-              </audio>
-            {% endif %}
-          </div>
-
-          {# Content preview #}
-          <p class="mt-3 text-sm entropy-text-soft post-card-content">{{ post.content|truncatechars:100 }}</p>
-
-          {# Actions: like count, like button, pin (god), delete (god) #}
-          <div class="post-actions">
-            <div class="countdown-pill border entropy-border px-3 py-1 text-xs font-bold uppercase tracking-wide" data-role="expire-pill">
-              <span class="entropy-text-muted">Осталось: </span>
-              <span class="countdown tabular-nums" data-expires="{{ post.expires_at.isoformat }}">…</span>
-            </div>
-            <div class="post-actions-buttons">
-              {% if user.is_authenticated %}
-                <button type="button"
-                  class="entropy-text-muted inline-flex items-center gap-1 cursor-pointer border-0 bg-transparent p-0 hover:opacity-70 transition-opacity"
-                  data-like-url="{% url 'forum:toggle_like_post' post.slug %}"
-                  data-like-id="post-{{ post.slug }}"
-                  data-liked="{% if post.slug in liked_slugs %}true{% else %}false{% endif %}"
-                  aria-pressed="{% if post.slug in liked_slugs %}true{% else %}false{% endif %}"
-                  title="{% if post.slug in liked_slugs %}Убрать лайк{% else %}Поставить лайк{% endif %}">
-                  <svg class="h-3.5 w-3.5 like-heart" viewBox="0 0 24 24" fill="{% if post.slug in liked_slugs %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                  </svg>
-                  <span data-like-count-for="post-{{ post.slug }}">{{ post.like_count }}</span>
-                </button>
-              {% else %}
-                <span class="entropy-text-muted inline-flex items-center gap-1">
-                  <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                  </svg>
-                  <span>{{ post.like_count }}</span>
-                </span>
-              {% endif %}
-              {% if is_god %}
-                <form action="{% url 'forum:toggle_pin_post' post.slug %}" method="post" class="inline">
-                  {% csrf_token %}
-                  <button type="submit" class="entropy-btn px-2 py-0.5 text-[10px] font-semibold">
-                    {% if post.is_pinned %}Открепить{% else %}Закрепить{% endif %}
-                  </button>
-                </form>
-                <form action="{% url 'forum:post_delete' post.slug %}" method="post" class="inline"
-                      onsubmit="return confirm('Отправить пост «{{ post.title|escapejs }}» в Кладбище?');">
-                  {% csrf_token %}
-                  <button type="submit" class="entropy-btn-invert px-2 py-0.5 text-[10px]">Удалить</button>
-                </form>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-      </article>
-    {% endfor %}
+  {# ── Infinite scroll sentinel ── #}
+  <div id="scroll-sentinel" class="flex items-center justify-center py-8 entropy-text-faint">
+    <div id="scroll-loader" class="hidden flex items-center gap-2 text-sm font-semibold">
+      <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+      </svg>
+      <span>Загрузка...</span>
+    </div>
+    <div id="scroll-end" class="hidden text-xs uppercase tracking-widest opacity-50">
+      Все посты загружены
+    </div>
   </div>
 {% endblock %}
 
@@ -279,6 +199,63 @@
     });
   }
   tick(); setInterval(tick, 1000);
+
+  // ── Infinite scroll ──
+  var sentinel = document.getElementById('scroll-sentinel');
+  var grid = document.getElementById('post-grid');
+  var loader = document.getElementById('scroll-loader');
+  var endMsg = document.getElementById('scroll-end');
+  var currentPage = 1;
+  var isLoading = false;
+  var hasMore = true;
+
+  if (sentinel && grid) {
+    var observer = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting && !isLoading && hasMore) {
+        loadMore();
+      }
+    }, { rootMargin: '200px' });
+    observer.observe(sentinel);
+  }
+
+  function loadMore() {
+    isLoading = true;
+    loader.classList.remove('hidden');
+
+    currentPage++;
+    var params = new URLSearchParams({ page: currentPage, per_page: 12 });
+
+    fetch('/posts/more/?' + params.toString(), {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.ok || !data.html.trim()) {
+          hasMore = false;
+          endMsg.classList.remove('hidden');
+          return;
+        }
+        // Create temp container, insert HTML, extract cards
+        var temp = document.createElement('div');
+        temp.innerHTML = data.html;
+        var cards = temp.querySelectorAll('.post-card');
+        cards.forEach(function (card) {
+          card.classList.add('post-card-fade-in');
+          grid.appendChild(card);
+        });
+        hasMore = data.has_next;
+        if (!hasMore) {
+          endMsg.classList.remove('hidden');
+        }
+      })
+      .catch(function () {
+        currentPage--;
+      })
+      .finally(function () {
+        loader.classList.add('hidden');
+        isLoading = false;
+      });
+  }
 })();
 </script>
 {% endblock %}

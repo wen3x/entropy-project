@@ -12,6 +12,7 @@ from django.db.models import Count, F, Q
 import django.db.utils
 from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseGone, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
@@ -32,12 +33,16 @@ from accounts.quests import (
 
 from .forms import CommentForm, NodeForm, PostForm
 from .models import Comment, Like, Node, Post
-from .rate_limit import allow_like, deny_like_message
+from .rate_limit import allow_like
 
 POST_CREATION_COST = 25
 ACTIVE_LIKE = Q(likes__is_active=True)
 GOLDEN_LIKE_REWARD = 10
 APPROVAL_REWARD = 100
+
+# ── Лимиты загрузки ──
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB — лимит Cloudinary для фото
+MAX_UPLOAD_SIZE_GIF = 10 * 1024 * 1024  # 10 MB — GIF могут быть больше
 
 
 import re
@@ -156,13 +161,6 @@ def wants_json(request) -> bool:
     return "application/json" in accept
 
 
-def json_like_error(request, message: str, status: int = 429):
-    if wants_json(request):
-        return JsonResponse({"ok": False, "error": message}, status=status)
-    messages.error(request, message)
-    return redirect(request.META.get("HTTP_REFERER", "/"))
-
-
 def post_like_count(post: Post) -> int:
     post_ct = ContentType.objects.get_for_model(Post)
     return Like.objects.filter(
@@ -180,6 +178,9 @@ def comment_like_count(comment: Comment) -> int:
 def _upload_comment_media(c, file_obj):
     """Загрузить медиа в Cloudinary и привязать к комментарию/ответу."""
     if not file_obj:
+        return
+    limit = MAX_UPLOAD_SIZE_GIF if getattr(file_obj, "name", "").lower().endswith(".gif") else MAX_UPLOAD_SIZE
+    if file_obj.size > limit:
         return
     url = upload_to_cloudinary(file_obj, resource_type="image")
     if not url:
@@ -506,6 +507,11 @@ def post_create(request, node_slug=None):
 
             final_url = ""
             if media_type and media_file:
+                # Проверка размера файла
+                limit = MAX_UPLOAD_SIZE_GIF if media_type == "gif" else MAX_UPLOAD_SIZE
+                if media_file.size > limit:
+                    messages.error(request, f"Файл слишком большой. Максимум {limit // (1024*1024)} MB.")
+                    return redirect(request.META.get("HTTP_REFERER") or "forum:post_list")
                 resource_type = "video" if media_type == "audio" else "image"
                 final_url = upload_to_cloudinary(media_file, resource_type)
                 if not final_url:
@@ -584,14 +590,6 @@ def post_destroy(request, slug):
 @login_required
 @require_http_methods(["POST"])
 def toggle_like_post(request, slug):
-    if not allow_like(request.user.pk):
-        if wants_json(request):
-            return json_like_error(
-                request, "Слишком быстро: не более одного лайка в секунду."
-            )
-        deny_like_message(request)
-        return redirect(request.META.get("HTTP_REFERER", "/"))
-
     post = get_object_or_404(Post, slug=slug)
     if not post.is_active:
         if wants_json(request):
@@ -660,14 +658,6 @@ def toggle_like_post(request, slug):
 @login_required
 @require_http_methods(["POST"])
 def toggle_like_comment(request, pk):
-    if not allow_like(request.user.pk):
-        if wants_json(request):
-            return json_like_error(
-                request, "Слишком быстро: не более одного лайка в секунду."
-            )
-        deny_like_message(request)
-        return redirect(request.META.get("HTTP_REFERER", "/"))
-
     comment = get_object_or_404(Comment, pk=pk)
     if not comment.is_active or not comment.post.is_active:
         if wants_json(request):
@@ -1218,6 +1208,84 @@ def debug_view(request):
 def custom_404(request, exception=None):
     """Кастомная страница 404 ошибки вместо стандартной."""
     return render(request, "404.html", status=404)
+
+
+# ── OFFLINE PAGE (PWA) ────────────────────────────────────────────────────
+
+def offline_page(request):
+    """Страница, показываемая при отсутствии интернета (кэшируется SW)."""
+    return render(request, "forum/offline.html")
+
+
+# ── Infinite scroll: JSON endpoint for post list ──
+
+def post_list_json(request):
+    """Возвращает JSON с HTML-карточками для бесконечного скролла.
+    GET-параметры:
+      page — номер страницы (начиная с 2)
+      node_slug — опционально, для страницы узла
+    """
+    now = timezone.now()
+    page = int(request.GET.get("page", 2))
+    per_page = int(request.GET.get("per_page", 12))
+    node_slug = request.GET.get("node_slug", None)
+    
+    posts = (
+        Post.objects.filter(is_active=True, expires_at__gt=now)
+        .select_related("author", "node")
+        .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
+        .order_by("-is_golden", "-is_pinned", "-like_count", "-created_at")
+    )
+    
+    if node_slug:
+        node = get_object_or_404(Node, slug=node_slug, is_active=True)
+        posts = posts.filter(node=node)
+    
+    total = posts.count()
+    offset = (page - 1) * per_page
+    page_posts = list(posts[offset:offset + per_page])
+    
+    # ── Liked slugs ──
+    liked_slugs = set()
+    post_ct = ContentType.objects.get_for_model(Post)
+    if request.user.is_authenticated and page_posts:
+        liked_ids = set(
+            Like.objects.filter(
+                user=request.user,
+                content_type=post_ct,
+                object_id__in=[p.pk for p in page_posts],
+                is_active=True,
+            ).values_list("object_id", flat=True)
+        )
+        for post in page_posts:
+            if post.pk in liked_ids:
+                liked_slugs.add(post.slug)
+    
+    # ── Moderator IDs ──
+    author_ids = list({p.author_id for p in page_posts})
+    moderator_ids = get_moderator_ids(author_ids) if author_ids else set()
+    
+    # ── Render HTML for each post ──
+    html = render_to_string(
+        "forum/_post_card.html",
+        {
+            "posts": page_posts,
+            "liked_slugs": liked_slugs,
+            "is_god": is_god(request.user),
+            "is_moderator": can_moderate(request.user),
+            "moderator_ids": moderator_ids,
+            "god_username": getattr(settings, 'GOD_USERNAME', 'admin'),
+        },
+        request=request,
+    )
+    
+    return JsonResponse({
+        "ok": True,
+        "html": html,
+        "page": page,
+        "has_next": (offset + per_page) < total,
+        "total": total,
+    })
 
 
 # ── PWA: Service Worker (/sw.js) ──────────────────────────────────────────

@@ -167,6 +167,7 @@
       <a href="{% url 'complaints_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Жалобы</a>
       {% endif %}
       <a href="{{ donation_alerts_url }}" target="_blank" rel="noopener noreferrer" class="da-btn">DonationAlerts</a>
+      <a href="https://github.com/wen3x/entropy-project" target="_blank" rel="noopener noreferrer" class="github-btn">GitHub</a>
       {% if is_god %}
       <a href="{% url 'secret_panel' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Секретная панель</a>
       {% endif %}
@@ -244,7 +245,13 @@
   </nav>
 
   <footer class="entropy-footer py-8 text-center text-xs">
-    <span class="entropy-text-faint">Entropy &middot; контент умирает по таймеру</span>
+    <div class="entropy-text-faint">
+      Entropy &middot; контент умирает по таймеру
+    </div>
+    <div class="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+      <a href="{% url 'terms_of_use' %}" class="underline hover:opacity-70 transition-opacity">Пользовательское соглашение</a>
+      <a href="{% url 'privacy_policy' %}" class="underline hover:opacity-70 transition-opacity">Политика конфиденциальности</a>
+    </div>
   </footer>
 
   {# ── Прочее popup ── #}
@@ -290,6 +297,12 @@
             <path stroke-linecap="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
           </svg>
           DonationAlerts
+        </a>
+        <a href="https://github.com/wen3x/entropy-project" target="_blank" rel="noopener noreferrer" class="github-btn" style="display: flex; align-items: center; gap: 0.75rem;">
+          <svg class="h-5 w-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+          </svg>
+          GitHub
         </a>
         {% if is_god %}
         <a href="{% url 'secret_panel' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
@@ -445,6 +458,45 @@
     });
   })();
   </script>
+  {# ── Welcome popup for unregistered users (first visit) ── #}
+  {% if not user.is_authenticated %}
+  <div id="welcome-popup" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:var(--entropy-overlay);" aria-hidden="true">
+    <div class="entropy-card w-full max-w-lg p-6 sm:p-8 relative" style="max-height:90vh;overflow-y:auto;">
+      <h2 class="text-xl font-extrabold uppercase tracking-tight">Добро пожаловать в Entropy!</h2>
+      <div class="mt-4 text-sm entropy-text-soft leading-relaxed space-y-3">
+        <p><strong>Форум, где посты живут ограниченное время.</strong></p>
+        <p>Посты существуют <strong>7 дней</strong>, после чего исчезают. Это создаёт динамичную ленту — контент либо ценный, либо умирает.</p>
+        <p>Что можно делать:</p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><strong>Лайкать</strong> — продлевать жизнь постам</li>
+          <li><strong>Комментировать</strong> — добавлять посту +12 часов</li>
+          <li><strong>Получать токены</strong> за стрики и квесты</li>
+          <li><strong>Покупать темы профиля</strong> в магазине</li>
+          <li><strong>Золотые посты</strong> — ивенты от админа с наградами</li>
+        </ul>
+        <p class="entropy-text-faint text-xs">Оригинальный сайт: <a href="https://entropyy.ru" target="_blank" class="underline">entropyy.ru</a></p>
+      </div>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button type="button" id="welcome-close" class="entropy-btn-primary flex-1 px-4 py-2 text-sm font-semibold">Понятно!</button>
+        <a href="{% url 'register' %}" class="entropy-btn flex-1 px-4 py-2 text-sm font-semibold text-center">Зарегистрироваться</a>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function() {
+    var popup = document.getElementById('welcome-popup');
+    if (!popup) return;
+    if (localStorage.getItem('entropy-welcome-seen')) {
+      popup.style.display = 'none';
+    }
+    document.getElementById('welcome-close').addEventListener('click', function() {
+      localStorage.setItem('entropy-welcome-seen', '1');
+      popup.style.display = 'none';
+    });
+  })();
+  </script>
+  {% endif %}
+
   {# ── PWA: Install banner (Android only) ── #}
   <div id="pwa-install-banner" class="pwa-install-banner" role="dialog" aria-label="Установка приложения">
     <div class="pwa-install-banner__inner">

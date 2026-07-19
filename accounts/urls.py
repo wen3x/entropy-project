@@ -2,6 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
+from .forms import RecaptchaLoginForm
 
 urlpatterns = [
     path("register/", views.register, name="register"),
@@ -21,7 +22,10 @@ urlpatterns = [
     ),
     path(
         "login/",
-        auth_views.LoginView.as_view(template_name="registration/login.html"),
+        auth_views.LoginView.as_view(
+            template_name="registration/login.html",
+            authentication_form=RecaptchaLoginForm,
+        ),
         name="login",
     ),
     path(
@@ -42,4 +46,7 @@ urlpatterns = [
     path("complaints/submit/", views.submit_complaint, name="submit_complaint"),
     path("complaints/<int:pk>/resolve/", views.resolve_complaint, name="resolve_complaint"),
     path("complaints/<int:pk>/dismiss/", views.dismiss_complaint, name="dismiss_complaint"),
+    # Юридические страницы
+    path("privacy/", views.legal_page, {"slug": "privacy"}, name="privacy_policy"),
+    path("terms/", views.legal_page, {"slug": "terms"}, name="terms_of_use"),
 ]

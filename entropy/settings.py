@@ -127,6 +127,10 @@ WEBPUSH_VAPID_CLAIMS = {
     'sub': 'mailto:admin@entropy.local',
 }
 
+# ── reCAPTCHA v3 ───────────────────────────────────────────────────────────────
+RECAPTCHA_SITE_KEY = os.getenv('RECAPTCHA_SITE_KEY', '')
+RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '')
+
 # ── Cloudinary ───────────────────────────────────────────────────────────────
 CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME', '')
 CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY', '')

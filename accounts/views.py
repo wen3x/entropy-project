@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from pathlib import Path
 
 from django.conf import settings
 from django.contrib import messages
@@ -8,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.core.management import call_command
 from django.db.models import F
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -18,7 +19,58 @@ from forum.models import Post
 from .forms import RegistrationForm
 from forum.models import Node
 
+
+def legal_page(request, slug):
+    """Страница с юридическим текстом из .txt файла."""
+    files = {
+        "privacy": "privacy_policy.txt",
+        "terms": "terms_of_use.txt",
+    }
+    info = {
+        "privacy": {"title": "Политика конфиденциальности", "slug": "privacy"},
+        "terms": {"title": "Пользовательское соглашение", "slug": "terms"},
+    }
+    page = info.get(slug)
+    if not page:
+        raise Http404()
+    try:
+        content = (Path(__file__).resolve().parent.parent / files[slug]).read_text("utf-8")
+    except FileNotFoundError:
+        raise Http404()
+    return render(request, "accounts/legal.html", {"page": page, "content": content})
+
+import urllib.request
+import urllib.parse
+
 from .models import Ban, ShopItem
+
+
+def verify_recaptcha(request) -> bool:
+    """Проверить reCAPTCHA v3 токен.
+    Возвращает True, если проверка пройдена (или ключи не настроены).
+    """
+    secret = getattr(settings, 'RECAPTCHA_SECRET_KEY', '')
+    if not secret:
+        # Ключи не настроены — пропускаем проверку
+        return True
+    token = request.POST.get('g-recaptcha-response', '')
+    if not token:
+        return False
+    try:
+        data = urllib.parse.urlencode({
+            'secret': secret,
+            'response': token,
+            'remoteip': request.META.get('REMOTE_ADDR', ''),
+        }).encode()
+        req = urllib.request.Request(
+            'https://www.google.com/recaptcha/api/siteverify',
+            data=data,
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            result = json.loads(resp.read().decode())
+        return result.get('success', False) and result.get('score', 0) >= 0.5
+    except Exception:
+        return False
 from .quests import ensure_default_quests, get_user_quests_context
 from .shop import ensure_default_shop_items, get_visible_shop_items, purchase_item, reset_theme
 from .streaks import STREAK_MAX_DAYS, STREAK_SCHEDULE, get_streak_page_context
@@ -28,8 +80,19 @@ from .theme import get_palette, PALETTES
 def register(request):
     if request.method == "POST":
         form = RegistrationForm(request.POST)
-        if form.is_valid():
+        # Rate limit: не чаще 1 регистрации в 10 минут с одного IP
+        from django.core.cache import cache
+        ip = request.META.get('REMOTE_ADDR', 'unknown')
+        rl_key = f"entropy:register_rl:{ip}"
+        if cache.get(rl_key):
+            messages.error(request, "Слишком часто. Попробуйте через 10 минут.")
+        elif not verify_recaptcha(request):
+            messages.error(request, "Проверка reCAPTCHA не пройдена. Попробуйте ещё раз.")
+        elif not request.POST.get("agree"):
+            messages.error(request, "Необходимо принять Пользовательское соглашение и Политику конфиденциальности.")
+        elif form.is_valid():
             form.save()
+            cache.set(rl_key, 1, timeout=600)  # 10 минут
             return render(
                 request,
                 "accounts/register_done.html",

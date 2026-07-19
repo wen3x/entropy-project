@@ -106,6 +106,7 @@ class CommentForm(forms.ModelForm):
             "class": "hidden",
             "accept": "image/*,.gif",
             "id": "comment-media-input",
+            "data-max-size": str(5 * 1024 * 1024),
         }),
     )
 

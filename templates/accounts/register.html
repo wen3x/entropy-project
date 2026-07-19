@@ -6,7 +6,7 @@
   <div class="entropy-card mx-auto max-w-md p-8">
     <h1 class="text-2xl font-extrabold uppercase tracking-tight">Регистрация</h1>
     <p class="mt-1 text-sm entropy-text-faint">После регистрации на счёт начисляется <span class="font-bold entropy-text-emphasis">50 токенов</span>.</p>
-    <form method="post" class="mt-6 space-y-4">
+    <form method="post" class="mt-6 space-y-4" id="register-form">
       {% csrf_token %}
       {% for field in form %}
         <div>
@@ -15,8 +15,34 @@
           {% if field.errors %}<p class="mt-1 text-sm font-medium">{{ field.errors.0 }}</p>{% endif %}
         </div>
       {% endfor %}
+      <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response" value="">
+      <div class="flex items-start gap-2">
+        <input type="checkbox" name="agree" id="id_agree" required class="mt-1 shrink-0 w-4 h-4">
+        <label for="id_agree" class="text-xs entropy-text-soft leading-relaxed">
+          Я принимаю <a href="{% url 'terms_of_use' %}" target="_blank" class="underline font-semibold">Пользовательское соглашение</a>
+          и <a href="{% url 'privacy_policy' %}" target="_blank" class="underline font-semibold">Политику конфиденциальности</a>
+        </label>
+      </div>
       <button type="submit" class="entropy-btn-primary w-full py-2.5 text-sm font-semibold">Создать аккаунт</button>
     </form>
     <p class="mt-6 text-center text-sm entropy-text-faint">Уже есть аккаунт? <a href="{% url 'login' %}" class="underline font-semibold entropy-text-emphasis">Вход</a></p>
   </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if recaptcha_site_key %}
+<script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
+<script>
+document.getElementById('register-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var form = this;
+  grecaptcha.ready(function() {
+    grecaptcha.execute('{{ recaptcha_site_key }}', {action: 'register'}).then(function(token) {
+      document.getElementById('g-recaptcha-response').value = token;
+      HTMLFormElement.prototype.submit.call(form);
+    });
+  });
+});
+</script>
+{% endif %}
 {% endblock %}

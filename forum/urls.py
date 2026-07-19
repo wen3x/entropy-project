@@ -22,6 +22,10 @@ urlpatterns = [
     path("n/<slug:node_slug>/subscribe/", views.toggle_node_subscription, name="toggle_node_subscription"),
     path("n/<slug:node_slug>/new/", views.post_create, name="post_create_in_node"),
     path("n/<slug:node_slug>/<slug:post_slug>/", views.post_detail_in_node, name="post_detail_in_node"),
+    # PWA: Offline page
+    path("offline/", views.offline_page, name="offline"),
+    # Infinite scroll JSON endpoint
+    path("posts/more/", views.post_list_json, name="post_list_more"),
     # Search
     path("search/", views.search_view, name="search"),
     path("debug/", views.debug_view, name="debug"),
