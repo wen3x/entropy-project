@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Инвентарь{% endblock %}
 
 {% block content %}
   <div class="mb-8 border-b entropy-border pb-6">
     <h1 class="text-3xl font-extrabold uppercase tracking-tight">Инвентарь</h1>
-    <p class="mt-2 text-sm entropy-text-muted">Ваши предметы. Куплено тем: <span class="font-bold entropy-text-emphasis">{{ owned_count }}</span></p>
+    <p class="mt-2 text-sm entropy-text-muted">Ваши предметы и коллекции.</p>
   </div>
 
   {% if messages %}
@@ -14,62 +15,107 @@
     {% endfor %}
   {% endif %}
 
-  {% if theme_list %}
-    <div class="space-y-4">
-      {% for theme in theme_list %}
-        <article class="entropy-panel p-6" style="border-color: {{ theme.color }} !important;">
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-3">
-                <span class="inline-block h-6 w-6 rounded-full shrink-0" style="background: {{ theme.color }}; box-shadow: 0 0 8px {{ theme.color }};"></span>
-                <div>
-                  <h2 class="text-lg font-bold" style="color: {{ theme.color }};">{{ theme.name }}</h2>
-                  {% if theme.is_active %}
-                    <span class="text-xs font-bold uppercase tracking-wide entropy-text-emphasis flex items-center gap-1 mt-0.5">
-                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                      Активна сейчас
-                    </span>
-                  {% endif %}
+  {# ── Вкладки ── #}
+  <div class="mb-6 flex border-b entropy-border" role="tablist">
+    <button role="tab" aria-selected="true"
+            class="tab-btn px-5 py-3 text-sm font-bold uppercase tracking-wide transition-colors duration-150
+                   border-b-2 -mb-[2px]
+                   entropy-text-emphasis border-current"
+            data-tab="themes"
+            onclick="switchTab(event, 'themes')">
+      <span class="flex items-center gap-2">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+        </svg>
+        Темы профиля
+        <span class="ml-1 text-xs entropy-text-faint">({{ owned_count }})</span>
+      </span>
+    </button>
+  </div>
+
+  {# ── Контент вкладок ── #}
+  <div id="tab-themes" class="tab-content" role="tabpanel">
+    {% if theme_list %}
+      <div class="space-y-4">
+        {% for theme in theme_list %}
+          <article class="entropy-panel p-6" style="border-color: {{ theme.color }} !important;">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-3">
+                  <span class="inline-block h-6 w-6 rounded-full shrink-0" style="background: {{ theme.color }}; box-shadow: 0 0 8px {{ theme.color }};"></span>
+                  <div>
+                    <h2 class="text-lg font-bold" style="color: {{ theme.color }};">{{ theme.name }}</h2>
+                    {% if theme.is_active %}
+                      <span class="text-xs font-bold uppercase tracking-wide entropy-text-emphasis flex items-center gap-1 mt-0.5">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Активна сейчас
+                      </span>
+                    {% endif %}
+                  </div>
                 </div>
               </div>
+              {% if not theme.is_active %}
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="apply_theme">
+                  <input type="hidden" name="theme_key" value="{{ theme.key }}">
+                  <button type="submit" class="entropy-btn px-4 py-2 text-sm font-semibold" style="border-color: {{ theme.color }}; color: {{ theme.color }};">Применить</button>
+                </form>
+              {% endif %}
             </div>
-            {% if not theme.is_active %}
-              <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="apply_theme">
-                <input type="hidden" name="theme_key" value="{{ theme.key }}">
-                <button type="submit" class="entropy-btn px-4 py-2 text-sm font-semibold" style="border-color: {{ theme.color }}; color: {{ theme.color }};">Применить</button>
-              </form>
-            {% endif %}
-          </div>
-        </article>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="entropy-panel px-6 py-12 text-center entropy-text-faint">
-      <p class="text-lg font-bold mb-2">Инвентарь пуст</p>
-      <p class="text-sm">Купите темы в <a href="{% url 'shop' %}" class="font-semibold underline">Магазине</a>, чтобы они появились здесь.</p>
-    </div>
-  {% endif %}
-
-  {% if current_color != 'default' %}
-    <div class="mt-6 entropy-panel p-4 flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-sm font-bold">Текущая тема активна</p>
-        <p class="mt-1 text-xs entropy-text-faint">Тема видна всем пользователям на вашем профиле.</p>
+          </article>
+        {% endfor %}
       </div>
-      <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="reset_theme">
-        <button type="submit" class="entropy-btn px-4 py-2 text-sm font-semibold">Сбросить до стандартной</button>
-      </form>
-    </div>
-  {% endif %}
+    {% else %}
+      <div class="entropy-panel px-6 py-12 text-center entropy-text-faint">
+        <p class="text-lg font-bold mb-2">Нет купленных тем</p>
+        <p class="text-sm">Купите темы в <a href="{% url 'shop' %}" class="font-semibold underline">Магазине</a>, чтобы они появились здесь.</p>
+      </div>
+    {% endif %}
+
+    {% if current_color != 'default' %}
+      <div class="mt-6 entropy-panel p-4 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p class="text-sm font-bold">Текущая тема активна</p>
+          <p class="mt-1 text-xs entropy-text-faint">Тема видна всем пользователям на вашем профиле.</p>
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="reset_theme">
+          <button type="submit" class="entropy-btn px-4 py-2 text-sm font-semibold">Сбросить до стандартной</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
 
   <p class="mt-8 flex gap-4">
     <a href="{% url 'shop' %}" class="text-sm font-semibold hover:underline">&larr; В магазин</a>
     <a href="{% url 'profile_detail' user.username %}" class="text-sm font-semibold hover:underline">&larr; В профиль</a>
   </p>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function switchTab(event, tabId) {
+  // Все кнопки вкладок
+  document.querySelectorAll('[role="tab"]').forEach(btn => {
+    btn.setAttribute('aria-selected', 'false');
+    btn.classList.remove('entropy-text-emphasis', 'border-current');
+    btn.classList.add('entropy-text-faint', 'border-transparent');
+  });
+  // Все панели
+  document.querySelectorAll('.tab-content').forEach(panel => {
+    panel.classList.add('hidden');
+  });
+  // Активная вкладка
+  const activeBtn = event.currentTarget;
+  activeBtn.setAttribute('aria-selected', 'true');
+  activeBtn.classList.remove('entropy-text-faint', 'border-transparent');
+  activeBtn.classList.add('entropy-text-emphasis', 'border-current');
+  // Показываем панель
+  document.getElementById('tab-' + tabId).classList.remove('hidden');
+}
+</script>
 {% endblock %}
