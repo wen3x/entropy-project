@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pathlib import Path
 from datetime import timedelta
 
@@ -191,15 +192,19 @@ def post_list(request):
     post_ct = ContentType.objects.get_for_model(Post)
     if request.user.is_authenticated:
         check_dying_posts_for_user(request.user)
-        liked_ids = Like.objects.filter(
-            user=request.user,
-            content_type=post_ct,
-            object_id__in=posts.values_list("pk", flat=True),
-            is_active=True,
-        ).values_list("object_id", flat=True)
-        liked_slugs = set(
-            Post.objects.filter(pk__in=liked_ids).values_list("slug", flat=True)
+        liked_ids = set(
+            Like.objects.filter(
+                user=request.user,
+                content_type=post_ct,
+                object_id__in=posts.values_list("pk", flat=True),
+                is_active=True,
+            ).values_list("object_id", flat=True)
         )
+        # Избегаем лишнего Post-запроса: slugs берём из уже загруженного queryset
+        # posts.values_list() — это подзапрос внутри Like-запроса, а не отдельный SQL
+        for post in posts:
+            if post.pk in liked_ids:
+                liked_slugs.add(post.slug)
 
     context = {
         "posts": posts,
@@ -720,10 +725,48 @@ def delete_comment(request, pk):
 
 def node_list(request):
     """Список всех активных узлов."""
-    nodes = Node.objects.filter(is_active=True).annotate(
-        post_count=Count("posts", filter=Q(posts__is_active=True, posts__expires_at__gt=timezone.now())),
-        like_count=Count("posts__likes", filter=Q(posts__likes__is_active=True, posts__is_active=True, posts__expires_at__gt=timezone.now())),
+    now = timezone.now()
+    nodes = Node.objects.filter(is_active=True)
+    post_ct = ContentType.objects.get_for_model(Post)
+
+    # ── Один запрос: все активные неистёкшие посты с их node_id ──
+    active_posts = list(
+        Post.objects
+        .filter(node__in=nodes, is_active=True, expires_at__gt=now)
+        .values("pk", "node_id")
     )
+
+    # post_count: считаем посты на узел
+    post_count_map = defaultdict(int)
+    # post_node_map: pk → node_id (для подсчёта лайков)
+    post_node_map = {}
+    for row in active_posts:
+        post_count_map[row["node_id"]] += 1
+        post_node_map[row["pk"]] = row["node_id"]
+
+    # ── like_count: считаем лайки для активных постов ──
+    like_count_by_node = defaultdict(int)
+    if post_node_map:
+        like_counts_qs = (
+            Like.objects
+            .filter(
+                content_type=post_ct,
+                object_id__in=list(post_node_map.keys()),
+                is_active=True,
+            )
+            .values("object_id")
+            .annotate(cnt=Count("pk"))
+        )
+        for lc in like_counts_qs:
+            node_id = post_node_map.get(lc["object_id"])
+            if node_id is not None:
+                like_count_by_node[node_id] += lc["cnt"]
+
+    # Прикрепляем счётчики как атрибуты объекта (не аннотация)
+    for node in nodes:
+        node.post_count = post_count_map.get(node.pk, 0)
+        node.like_count = like_count_by_node.get(node.pk, 0)
+
     return render(request, "forum/node_list.html", {"nodes": nodes, "is_god": is_god(request.user)})
 
 
@@ -747,15 +790,18 @@ def node_detail(request, node_slug):
     liked_slugs = set()
     post_ct = ContentType.objects.get_for_model(Post)
     if request.user.is_authenticated:
-        liked_ids = Like.objects.filter(
-            user=request.user,
-            content_type=post_ct,
-            object_id__in=posts.values_list("pk", flat=True),
-            is_active=True,
-        ).values_list("object_id", flat=True)
-        liked_slugs = set(
-            Post.objects.filter(pk__in=liked_ids).values_list("slug", flat=True)
+        liked_ids = set(
+            Like.objects.filter(
+                user=request.user,
+                content_type=post_ct,
+                object_id__in=posts.values_list("pk", flat=True),
+                is_active=True,
+            ).values_list("object_id", flat=True)
         )
+        # Избегаем лишнего Post-запроса: slugs берём из уже загруженного queryset
+        for post in posts:
+            if post.pk in liked_ids:
+                liked_slugs.add(post.slug)
 
     # Подписка на узел
     is_subscribed = False
@@ -900,30 +946,21 @@ def create_node(request):
         return HttpResponseForbidden("Доступ запрещён.")
 
     if request.method == "POST":
-        slug = request.POST.get("slug", "").strip().lower()
-        name = request.POST.get("name", "").strip()
-        description = request.POST.get("description", "").strip()
-        avatar = request.POST.get("avatar", "").strip()
-        header = request.POST.get("header", "").strip()
-        if slug and name:
-            if Node.objects.filter(slug=slug).exists():
-                messages.error(request, f"Узел с таким URL уже существует: /n/{slug}/")
-            else:
-                Node.objects.create(
-                    slug=slug,
-                    name=name,
-                    description=description,
-                    avatar=avatar,
-                    header=header,
-                    created_by=request.user,
-                )
-                messages.success(request, f"Узел «{name}» создан: /n/{slug}/")
-                return redirect("forum:node_detail", node_slug=slug)
-        else:
-            messages.error(request, "Укажите URL и название узла.")
-        return redirect("forum:create_node")
+        form = NodeForm(request.POST)
+        if form.is_valid():
+            node = form.save(commit=False)
+            node.created_by = request.user
+            node.save()
+            messages.success(request, f"Узел «{node.name}» создан: /n/{node.slug}/")
+            return redirect("forum:node_detail", node_slug=node.slug)
+    else:
+        form = NodeForm()
 
-    return render(request, "forum/node_form.html", {"is_god": is_god(request.user)})
+    return render(
+        request,
+        "forum/node_form.html",
+        {"form": form, "is_god": is_god(request.user)},
+    )
 
 
 @login_required

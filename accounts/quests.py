@@ -109,27 +109,26 @@ def refresh_user_quest_slots(user: User) -> None:
     cooldown = timedelta(days=QUEST_REFRESH_DAYS)
     slots = list(UserQuestSlot.objects.filter(user=user).order_by("slot"))
     by_slot = {s.slot: s for s in slots}
+    existing_codes = {s.quest_code for s in slots}
 
     for slot_num in range(1, ACTIVE_SLOT_COUNT + 1):
         if slot_num not in by_slot:
-            used = set(
-                UserQuestSlot.objects.filter(user=user).values_list(
-                    "quest_code", flat=True
-                )
-            )
-            code = _pick_random_quest_code(used)
+            code = _pick_random_quest_code(existing_codes)
+            existing_codes.add(code)
             UserQuestSlot.objects.create(
                 user=user, slot=slot_num, quest_code=code
             )
 
-    for slot in UserQuestSlot.objects.filter(user=user).order_by("slot"):
+    # Обновляем завершённые слоты (избегаем повторного запроса — используем уже загруженные)
+    active_codes = {
+        s.quest_code for s in slots if s.completed_at is None
+    }
+    for slot in slots:
         if slot.completed_at and now >= slot.completed_at + cooldown:
-            used = set(
-                UserQuestSlot.objects.filter(user=user, completed_at__isnull=True)
-                .exclude(pk=slot.pk)
-                .values_list("quest_code", flat=True)
-            )
-            _assign_slot(slot, _pick_random_quest_code(used | {slot.quest_code}))
+            _assign_slot(slot, _pick_random_quest_code(active_codes | {slot.quest_code}))
+            # Обновляем active_codes: старый код выбыл, новый добавлен
+            active_codes.discard(slot.quest_code)
+            active_codes.add(slot.quest_code)
 
 
 def _grant_slot_reward(user: User, quest_def: dict) -> None:
@@ -174,14 +173,13 @@ def _set_slot_progress(slot: UserQuestSlot, value: int) -> None:
 
 
 def _max_post_likes_for_author(author_id: int) -> int:
+    """Максимальное количество лайков на одном посте автора.
+    Использует Subquery вместо материализации списка post_ids."""
     post_ct = ContentType.objects.get_for_model(Post)
-    post_ids = list(Post.objects.filter(author_id=author_id).values_list("pk", flat=True))
-    if not post_ids:
-        return 0
     counts = (
         Like.objects.filter(
             content_type=post_ct,
-            object_id__in=post_ids,
+            object_id__in=Post.objects.filter(author_id=author_id).values("pk"),
             is_active=True,
         )
         .values("object_id")
@@ -192,16 +190,20 @@ def _max_post_likes_for_author(author_id: int) -> int:
 
 
 def _max_distinct_commenters_on_author_posts(author_id: int) -> int:
-    best = 0
-    for post in Post.objects.filter(author_id=author_id).only("pk"):
-        distinct = (
-            post.comments.filter(is_active=True, parent__isnull=True)
-            .values("author_id")
-            .distinct()
-            .count()
+    """Максимальное количество уникальных комментаторов на одном посте автора.
+    Раньше был N+1 (цикл по постам с отдельным запросом для каждого).
+    Теперь — один запрос с GROUP BY."""
+    counts = (
+        Comment.objects.filter(
+            post__author_id=author_id,
+            is_active=True,
+            parent__isnull=True,
         )
-        best = max(best, distinct)
-    return best
+        .values("post_id")
+        .annotate(cnt=Count("author_id", distinct=True))
+        .values_list("cnt", flat=True)
+    )
+    return max(counts, default=0)
 
 
 def _max_comment_likes_for_author(author_id: int) -> int:

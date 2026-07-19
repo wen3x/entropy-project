@@ -213,14 +213,14 @@ class BanMiddleware:
     def _resolve_post(self, slug):
         from forum.models import Post
         try:
-            return Post.objects.get(slug=slug)
+            return Post.objects.select_related("node").get(slug=slug)
         except Post.DoesNotExist:
             return None
 
     def _resolve_comment(self, pk):
         from forum.models import Comment
         try:
-            return Comment.objects.get(pk=pk)
+            return Comment.objects.select_related("post__node").get(pk=pk)
         except Comment.DoesNotExist:
             return None
 
