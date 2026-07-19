@@ -186,7 +186,7 @@ def delete_push_subscription(request):
 
 @require_http_methods(["GET"])
 def online_count(request):
-    """Сколько людей сейчас на форуме (активны в последние 5 минут)."""
+    """Сколько авторизованных людей сейчас на форуме (активны в последние 5 минут)."""
     from django.contrib.sessions.models import Session
 
     now = timezone.now()
@@ -198,7 +198,8 @@ def online_count(request):
     for s in sessions.iterator():
         try:
             data = s.get_decoded()
-            if data.get("last_ping", 0) >= cutoff_ts:
+            # Считаем только авторизованных (есть _auth_user_id в сессии)
+            if data.get("_auth_user_id") and data.get("last_ping", 0) >= cutoff_ts:
                 count += 1
         except (ValueError, TypeError, KeyError):
             continue

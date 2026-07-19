@@ -264,6 +264,6 @@ class OnlineUsersMiddleware:
         self._admin_prefix = reverse("admin:index")
 
     def __call__(self, request):
-        if not request.path.startswith(self._admin_prefix):
+        if not request.path.startswith(self._admin_prefix) and request.user.is_authenticated:
             request.session["last_ping"] = timezone.now().timestamp()
         return self.get_response(request)
