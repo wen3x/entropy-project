@@ -185,6 +185,28 @@ def delete_push_subscription(request):
 
 
 @require_http_methods(["GET"])
+def online_count(request):
+    """Сколько людей сейчас на форуме (активны в последние 5 минут)."""
+    from django.contrib.sessions.models import Session
+
+    now = timezone.now()
+    cutoff = now - timedelta(minutes=5)
+    cutoff_ts = cutoff.timestamp()
+
+    sessions = Session.objects.filter(expire_date__gte=now)
+    count = 0
+    for s in sessions.iterator():
+        try:
+            data = s.get_decoded()
+            if data.get("last_ping", 0) >= cutoff_ts:
+                count += 1
+        except (ValueError, TypeError, KeyError):
+            continue
+
+    return JsonResponse({"count": count})
+
+
+@require_http_methods(["GET"])
 def vapid_public_key(request):
     """Отдать публичный VAPID ключ для подписки на push."""
     return JsonResponse({"public_key": settings.WEBPUSH_VAPID_PUBLIC_KEY})
@@ -417,6 +439,12 @@ def secret_panel(request):
                 messages.success(request, f"Бан пользователя «{target}» снят.")
             else:
                 messages.error(request, "Бан не найден.")
+        elif action == "toggle_anonymous":
+            user = request.user
+            user.is_anonymous_mode = not user.is_anonymous_mode
+            user.save(update_fields=["is_anonymous_mode"])
+            state = "включён" if user.is_anonymous_mode else "выключен"
+            messages.success(request, f"Анонимный режим {state}.")
 
         return redirect("secret_panel")
 
@@ -430,5 +458,6 @@ def secret_panel(request):
             "shop_items": ShopItem.objects.order_by("sort_order", "id"),
             "active_bans": active_bans,
             "nodes": Node.objects.filter(is_active=True).order_by("name"),
+            "anonymous_mode": request.user.is_anonymous_mode,
         },
     )

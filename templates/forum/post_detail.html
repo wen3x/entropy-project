@@ -23,7 +23,11 @@
   <article class="entropy-card p-4 sm:p-8 {% if post.is_golden %}post-golden{% endif %}">
     {# Meta row #}
     <p class="text-xs entropy-text-faint">
-      <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>@{{ post.author.username }}</a>
+      {% if post.author.is_anonymous_mode %}
+        <span class="entropy-text-muted">Аноним</span>
+      {% else %}
+        <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>@{{ post.author.username }}</a>
+      {% endif %}
       {% if post.is_golden %}<span class="ml-2 border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-yellow-500">Золотой пост · 24ч</span>{% endif %}
       {% if post_node %}
         &middot; <a href="{% url 'forum:node_detail' post_node.slug %}" class="hover:underline font-semibold">{{ post_node.name }}</a>

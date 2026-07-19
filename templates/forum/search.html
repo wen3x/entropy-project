@@ -41,7 +41,11 @@
                   <a href="{% url 'forum:node_detail' post.node.slug %}" class="hover:underline font-semibold">{{ post.node.name }}</a>
                   &middot;
                 {% endif %}
-                <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>@{{ post.author.username }}</a>
+                {% if post.author.is_anonymous_mode %}
+                  <span class="entropy-text-muted">Аноним</span>
+                {% else %}
+                  <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>@{{ post.author.username }}</a>
+                {% endif %}
                 &middot; {{ post.created_at|date:"d.m.Y H:i" }}
               </p>
               <h3 class="mt-1 font-bold">

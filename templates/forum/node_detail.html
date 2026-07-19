@@ -28,7 +28,6 @@
       <div class="min-w-0 flex-1">
         <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">
           <a href="{% url 'forum:node_list' %}" class="hover:underline">Узлы</a>
-          &middot; {{ node.created_at|date:"d.m.Y" }}
         </p>
         <h1 class="mt-2 text-3xl font-extrabold uppercase tracking-tight">{{ node.name }}</h1>
         <p class="mt-1 text-sm entropy-text-muted">/n/{{ node.slug }}</p>
@@ -202,7 +201,11 @@
       <article class="entropy-card post-card p-4 sm:p-6 {% if post.is_golden %}post-golden{% elif post.is_pinned %}post-pinned{% endif %}" data-expires="{{ post.expires_at.isoformat }}" style="position:relative;">
         <div class="post-card-inner">
           <p class="text-xs entropy-text-faint post-meta">
-            <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>@{{ post.author.username }}</a>
+            {% if post.author.is_anonymous_mode %}
+              <span class="entropy-text-muted">Аноним</span>
+            {% else %}
+              <a href="{% url 'profile_detail' post.author.username %}" class="hover:underline" {% with s=post.author.profile_color|author_style %}{% if s %}style="{{ s }}"{% endif %}{% endwith %}>@{{ post.author.username }}</a>
+            {% endif %}
             {% if post.is_golden %}
               <span class="ml-2 border border-dashed border-yellow-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-yellow-500">Золотой</span>
             {% elif post.is_pinned %}

@@ -35,6 +35,7 @@ class User(AbstractUser):
     has_basic_colors = models.BooleanField(default=False)
     has_gold_color = models.BooleanField(default=False)
     owned_colors = models.JSONField(default=list, blank=True)
+    is_anonymous_mode = models.BooleanField(default=False, help_text="Анонимный режим: имя скрывается в постах и комментариях")
 
     @property
     def owned_colors_list(self):

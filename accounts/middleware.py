@@ -254,3 +254,16 @@ class DailyStreakMiddleware:
                     messages.info(request, f"День {day} стрика. Продолжайте завтра!")
 
         return self.get_response(request)
+
+
+class OnlineUsersMiddleware:
+    """Пишет в сессию last_ping для счётчика онлайн."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self._admin_prefix = reverse("admin:index")
+
+    def __call__(self, request):
+        if not request.path.startswith(self._admin_prefix):
+            request.session["last_ping"] = timezone.now().timestamp()
+        return self.get_response(request)

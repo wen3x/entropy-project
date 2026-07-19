@@ -168,8 +168,14 @@
       <a href="{% url 'secret_panel' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Секретная панель</a>
       {% endif %}
       
+      {# ── Online counter (sidebar) ── #}
+      <div class="entropy-online-counter entropy-online-counter--sidebar w-full px-4 py-2 mt-auto" id="online-counter-sidebar">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="online-count-sidebar">—</span>
+        <span>людей на форуме</span>
+      </div>
       {% if user.is_authenticated %}
-      <form action="{% url 'logout' %}" method="post" class="mt-auto">
+      <form action="{% url 'logout' %}" method="post">
         {% csrf_token %}
         <button type="submit" class="entropy-btn w-full px-4 py-3 text-sm font-semibold">Выйти</button>
       </form>
@@ -297,10 +303,36 @@
         <a href="{% url 'register' %}" class="entropy-btn-primary w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">Регистрация</a>
         {% endif %}
       </div>
-      <button type="button" id="popup-close" class="w-full py-4 text-center text-sm font-semibold entropy-text-faint border-t entropy-border">Закрыть</button>
+      <div class="entropy-online-counter justify-center border-t entropy-border py-3" id="online-counter-popup">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="online-count-popup">—</span>
+        <span>людей на форуме</span>
+      </div>
+      <button type="button" id="popup-close" class="w-full py-4 text-center text-sm font-semibold entropy-text-faint">Закрыть</button>
     </div>
   </div>
 
+  <script>
+  (function () {
+    var els = [
+      document.getElementById('online-count-sidebar'),
+      document.getElementById('online-count-popup'),
+    ].filter(Boolean);
+    if (!els.length) return;
+    function update() {
+      fetch('/accounts/online/')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          els.forEach(function (el) { el.textContent = data.count; });
+        })
+        .catch(function () {
+          els.forEach(function (el) { el.textContent = '?'; });
+        });
+    }
+    update();
+    setInterval(update, 30000);
+  })();
+  </script>
   <script src="{% static 'js/entropy-theme.js' %}"></script>
 
   {# ── PWA: Service Worker ── #}
@@ -593,5 +625,7 @@
   </script>
 
   {% block extra_js %}{% endblock %}
+
+
 </body>
 </html>

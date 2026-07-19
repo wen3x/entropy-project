@@ -94,7 +94,8 @@ html.entropy-theming *::after {
               border-color 0.2s ease,
               box-shadow 0.2s ease,
               fill 0.2s ease,
-              stroke 0.2s ease !important;
+              stroke 0.2s ease,
+              filter 0.2s ease !important;
 }
 
 /* ── Reset & base ── */
@@ -938,6 +939,39 @@ html[data-site-theme="dark"] .node-header img {
   filter: invert(1);
 }
 
+/* ── Online counter ── */
+.entropy-online-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--entropy-fg);
+  opacity: 0.5;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.entropy-online-counter .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: entropy-online-blink 2s ease-in-out infinite;
+}
+
+@keyframes entropy-online-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+
+/* Скрываем счётчик в sidebar на мобилках — он уже есть в попапе */
+@media (max-width: 767px) {
+  .entropy-online-counter--sidebar {
+    display: none;
+  }
+}
+
 /* ── Post meta row (tight) ── */
 .post-meta {
   line-height: 1.2;
@@ -954,3 +988,5 @@ html[data-site-theme="dark"] .node-header img {
     justify-content: flex-start;
   }
 }
+
+
