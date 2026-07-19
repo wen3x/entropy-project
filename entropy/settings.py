@@ -10,11 +10,10 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # 2. Основные настройки из .env
 SECRET_KEY = os.getenv('SECRET_KEY')
-# DEBUG будет True, только если в .env написано DEBUG=True
 DEBUG = os.getenv('DEBUG') == 'True'
 
-# На сервере тут будет твой домен, пока оставляем локальные
-ALLOWED_HOSTS = ['*']
+_allowed = os.getenv('ALLOWED_HOSTS', '*')
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',') if h.strip()]
 
 # 3. Приложения
 INSTALLED_APPS = [
@@ -102,34 +101,30 @@ AUTH_USER_MODEL = 'accounts.User'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = reverse_lazy('forum:post_list')
 LOGOUT_REDIRECT_URL = reverse_lazy('forum:post_list')
-_csrf_origins = ['https://entropy-zfyh.onrender.com']
+# ── 10. CSRF ───────────────────────────────────────────────────────────────────
+_csrf_raw = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [h.strip() for h in _csrf_raw.split(',') if h.strip().startswith('http')]
+# Fallback для Render / Replit
 _replit_domain = os.getenv('REPLIT_DEV_DOMAIN')
 if _replit_domain:
-    _csrf_origins.append(f'https://{_replit_domain}')
+    CSRF_TRUSTED_ORIGINS.append(f'https://{_replit_domain}')
 _replit_domains = os.getenv('REPLIT_DOMAINS', '')
 for _d in _replit_domains.split(','):
     _d = _d.strip()
     if _d:
-        _csrf_origins.append(f'https://{_d}')
-CSRF_TRUSTED_ORIGINS = _csrf_origins
+        CSRF_TRUSTED_ORIGINS.append(f'https://{_d}')
 
-DONATION_ALERTS_URL = os.getenv(
-    'DONATION_ALERTS_URL',
-    'https://www.donationalerts.com/',
-)
+# ── 11. Администратор ─────────────────────────────────────────────────────────
+GOD_USERNAME = os.getenv('GOD_USERNAME', 'admin')
 
-# ── PWA: Web Push (VAPID) ────────────────────────────────────────────────────
-WEBPUSH_VAPID_PUBLIC_KEY = os.getenv(
-    'WEBPUSH_VAPID_PUBLIC_KEY',
-    'BMlKAiXwMgpNQRjRXwVtxTwH1i-x-HxErkmehRfa-gPhyTIOUg66vYWTp0jIJeFTHC-FwykXG-OHqvF0mGTtZXQ',
-)
-# Raw 32-byte EC private key, base64url encoded (NO newlines — удобно для .env)
-WEBPUSH_VAPID_PRIVATE_KEY = os.getenv(
-    'WEBPUSH_VAPID_PRIVATE_KEY',
-    'dpoqaF4adf46qfOQ0q4800byefS8a6U77FWkIL1fjpE',
-)
+# ── 12. Donation Alerts ───────────────────────────────────────────────────────
+DONATION_ALERTS_URL = os.getenv('DONATION_ALERTS_URL', '')
+
+# ── 13. Web Push (VAPID) ───────────────────────────────────────────────────────
+WEBPUSH_VAPID_PUBLIC_KEY = os.getenv('WEBPUSH_VAPID_PUBLIC_KEY', '')
+WEBPUSH_VAPID_PRIVATE_KEY = os.getenv('WEBPUSH_VAPID_PRIVATE_KEY', '')
 WEBPUSH_VAPID_CLAIMS = {
-    'sub': 'mailto:entropy@example.com',
+    'sub': 'mailto:admin@entropy.local',
 }
 
 # ── Cloudinary ───────────────────────────────────────────────────────────────
@@ -146,5 +141,5 @@ if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
         secure=True,
     )
 
-# ── Cron: секретный токен для внешнего триггера (cron-job.org) ────────────
-CRON_SECRET_TOKEN = os.getenv('CRON_SECRET_TOKEN', 'change-me-in-production')
+# ── 15. Cron ───────────────────────────────────────────────────────────────────
+CRON_SECRET_TOKEN = os.getenv('CRON_SECRET_TOKEN', '')

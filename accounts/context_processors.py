@@ -2,8 +2,10 @@ from django.conf import settings
 
 
 def site_context(request):
+    """Глобальный контекст для всех шаблонов: admin, уведомления, бан, донаты."""
+    god_username = getattr(settings, 'GOD_USERNAME', 'admin')
     is_god = (
-        request.user.is_authenticated and request.user.username == "wen3x"
+        request.user.is_authenticated and request.user.username == god_username
     )
     unread_notifications = 0
     active_ban = None

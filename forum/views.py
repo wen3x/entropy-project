@@ -82,7 +82,9 @@ def upload_to_cloudinary(file_obj, resource_type="auto"):
 
 
 def is_god(user) -> bool:
-    return user.is_authenticated and user.username == "wen3x"
+    """Проверить, является ли пользователь администратором (god-пользователем)."""
+    god_username = getattr(settings, 'GOD_USERNAME', 'admin')
+    return user.is_authenticated and user.username == god_username
 
 
 def is_banned(user, node=None) -> bool:
@@ -708,7 +710,7 @@ def edit_comment(request, pk):
 @login_required
 @require_http_methods(["POST"])
 def delete_comment(request, pk):
-    """Удаление комментария: автор или wen3x может удалить любой комментарий/ответ."""
+    """Удаление комментария: автор или администратор может удалить любой комментарий/ответ."""
     comment = get_object_or_404(Comment, pk=pk)
     if not (request.user.pk == comment.author_id or is_god(request.user)):
         return HttpResponseForbidden("Доступ запрещён.")
@@ -902,7 +904,7 @@ def node_detail(request, node_slug):
             else:
                 messages.error(request, "Укажите заголовок и текст Золотого поста.")
         else:
-            messages.error(request, "Только wen3x может создавать Золотые посты.")
+            messages.error(request, "Только администратор может создавать Золотые посты.")
         return redirect("forum:node_detail", node_slug=node.slug)
 
     return render(
@@ -941,7 +943,7 @@ def toggle_node_subscription(request, node_slug):
 @login_required
 @require_http_methods(["GET", "POST"])
 def create_node(request):
-    """Создание узла (только wen3x)."""
+    """Создание узла (только администратор)."""
     if not is_god(request.user):
         return HttpResponseForbidden("Доступ запрещён.")
 
@@ -966,7 +968,7 @@ def create_node(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def edit_node(request, node_slug):
-    """Редактирование узла (только wen3x)."""
+    """Редактирование узла (только администратор)."""
     if not is_god(request.user):
         return HttpResponseForbidden("Доступ запрещён.")
 
@@ -1026,7 +1028,9 @@ def search_view(request):
 # ── DIAGNOSTICS ──────────────────────────────────────────────────────────────
 
 def debug_view(request):
-    """Показывает статус системы (только для wen3x)."""
+    """Диагностика системы (только администратор, только в режиме DEBUG)."""
+    if not settings.DEBUG:
+        return HttpResponseForbidden()
     if not is_god(request.user):
         return HttpResponseForbidden()
 

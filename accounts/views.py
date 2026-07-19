@@ -347,7 +347,8 @@ def inventory_view(request):
 
 @login_required
 def secret_panel(request):
-    if request.user.username != "wen3x":
+    god_username = getattr(settings, 'GOD_USERNAME', 'admin')
+    if request.user.username != god_username:
         return HttpResponseForbidden("Доступ запрещён.")
 
     User = get_user_model()
