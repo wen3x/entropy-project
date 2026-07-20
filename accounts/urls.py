@@ -1,5 +1,5 @@
 from django.contrib.auth import views as auth_views
-from django.urls import path
+from django.urls import path, reverse_lazy
 
 from . import views
 from .forms import RecaptchaLoginForm
@@ -49,4 +49,41 @@ urlpatterns = [
     # Юридические страницы
     path("privacy/", views.legal_page, {"slug": "privacy"}, name="privacy_policy"),
     path("terms/", views.legal_page, {"slug": "terms"}, name="terms_of_use"),
+    # Email: подтверждение
+    path("verify/<uidb64>/<token>/", views.verify_email, name="verify_email"),
+    # Настройки
+    path("settings/", views.settings_view, name="settings"),
+    path("confirm-email-change/<uidb64>/<token>/", views.confirm_email_change, name="confirm_email_change"),
+    # Сброс пароля (Django built-in)
+    path(
+        "password-reset/",
+        auth_views.PasswordResetView.as_view(
+            template_name="registration/password_reset_form.html",
+            email_template_name="registration/password_reset_email.html",
+            success_url=reverse_lazy("password_reset_done"),
+        ),
+        name="password_reset",
+    ),
+    path(
+        "password-reset/done/",
+        auth_views.PasswordResetDoneView.as_view(
+            template_name="registration/password_reset_done.html",
+        ),
+        name="password_reset_done",
+    ),
+    path(
+        "reset/<uidb64>/<token>/",
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name="registration/password_reset_confirm.html",
+            success_url=reverse_lazy("password_reset_complete"),
+        ),
+        name="password_reset_confirm",
+    ),
+    path(
+        "reset/done/",
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name="registration/password_reset_complete.html",
+        ),
+        name="password_reset_complete",
+    ),
 ]

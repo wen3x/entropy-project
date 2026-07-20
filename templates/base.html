@@ -120,6 +120,12 @@
       </div>
 
       <div class="flex shrink-0 items-center gap-1 text-xs sm:gap-3 sm:text-sm">
+        {% if user.is_authenticated %}
+          <span class="token-counter px-2 py-1 text-sm font-semibold tabular-nums sm:px-3">
+            <span class="hidden sm:inline">{{ user.tokens }} ток.</span>
+            <span class="sm:hidden">{{ user.tokens }}</span>
+          </span>
+        {% endif %}
         <button type="button" id="site-theme-toggle" class="entropy-theme-toggle hidden sm:inline-flex" aria-label="Переключить тему сайта">
           <svg class="theme-icon-light h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
@@ -129,10 +135,6 @@
           </svg>
         </button>
         {% if user.is_authenticated %}
-          <span class="token-counter px-2 py-1 text-sm font-semibold tabular-nums sm:px-3">
-            <span class="hidden sm:inline">{{ user.tokens }} ток.</span>
-            <span class="sm:hidden">{{ user.tokens }}</span>
-          </span>
           <a href="{% url 'notifications_list' %}"
              class="entropy-icon-btn relative hidden sm:flex h-11 w-11 shrink-0 items-center justify-center"
              aria-label="Уведомления">
@@ -163,6 +165,7 @@
       <a href="{% url 'forum:graveyard_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Кладбище</a>
       <a href="{% url 'shop' %}"                 class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Магазин</a>
       <a href="{% url 'streaks' %}"              class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Стрики</a>
+      <a href="{% url 'settings' %}"              class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Настройки</a>
       {% if is_god or is_moderator %}
       <a href="{% url 'complaints_list' %}" class="entropy-btn px-4 py-3 text-center text-sm font-semibold">Жалобы</a>
       {% endif %}
@@ -257,6 +260,7 @@
     <div class="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
       <a href="{% url 'terms_of_use' %}" class="underline hover:opacity-70 transition-opacity">Пользовательское соглашение</a>
       <a href="{% url 'privacy_policy' %}" class="underline hover:opacity-70 transition-opacity">Политика конфиденциальности</a>
+      <a href="mailto:support@entropyy.ru" class="underline hover:opacity-70 transition-opacity">Служба поддержки — support@entropyy.ru</a>
     </div>
   </footer>
 
@@ -289,6 +293,13 @@
             <path stroke-linecap="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
           </svg>
           Стрики
+        </a>
+        <a href="{% url 'settings' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
+          <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Настройки
         </a>
         {% if is_god or is_moderator %}
         <a href="{% url 'complaints_list' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">
@@ -331,6 +342,9 @@
         {% else %}
         <a href="{% url 'login' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">Вход</a>
         <a href="{% url 'register' %}" class="entropy-btn-primary w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">Регистрация</a>
+        {% if email_available %}
+        <a href="{% url 'password_reset' %}" class="entropy-btn w-full justify-start gap-3 px-4 py-3 text-sm font-semibold">Забыли пароль?</a>
+        {% endif %}
         {% endif %}
       </div>
       <div class="entropy-online-counter justify-center border-t entropy-border py-3" id="online-counter-popup">

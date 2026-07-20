@@ -38,6 +38,16 @@ class User(AbstractUser):
     has_gold_color = models.BooleanField(default=False)
     owned_colors = models.JSONField(default=list, blank=True)
     is_anonymous_mode = models.BooleanField(default=False, help_text="Анонимный режим: имя скрывается в постах и комментариях")
+    email_verified = models.BooleanField(default=False, help_text="Email подтверждён")
+    email_notifications = models.BooleanField(default=True, help_text="Рассылать уведомления на почту")
+    tokens_awarded = models.BooleanField(default=True, help_text="50 токенов за регистрацию уже начислены")
+
+    def award_signup_tokens(self):
+        """Начислить 50 токенов за регистрацию (после подтверждения email)."""
+        if not self.tokens_awarded:
+            self.tokens = (self.tokens or 0) + 50
+            self.tokens_awarded = True
+            self.save(update_fields=["tokens", "tokens_awarded"])
 
     @property
     def owned_colors_list(self):
@@ -54,7 +64,11 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         if self._state.adding:
-            self.tokens = self.tokens + 50
+            # Если email не настроен — выдаём токены сразу, иначе ждём подтверждения
+            if not getattr(settings, 'EMAIL_HOST', None):
+                self.tokens = self.tokens + 50
+            else:
+                self.tokens_awarded = False
         super().save(*args, **kwargs)
 
 

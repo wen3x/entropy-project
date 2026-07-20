@@ -29,7 +29,7 @@
         <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">
           <a href="{% url 'forum:node_list' %}" class="hover:underline">Узлы</a>
         </p>
-        <h1 class="mt-2 text-3xl font-extrabold uppercase tracking-tight">{{ node.name }}</h1>
+        <h1 class="mt-2 text-3xl font-extrabold tracking-tight">{{ node.name }}</h1>
         <p class="mt-1 text-sm entropy-text-muted">/n/{{ node.slug }}</p>
         {% if node.description %}
           <p class="mt-2 text-sm entropy-text-muted">{{ node.description }}</p>

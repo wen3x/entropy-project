@@ -6,6 +6,7 @@ from functools import lru_cache
 from urllib.parse import urlparse
 
 from django.conf import settings
+from django.core.mail import send_mail
 from django.utils import timezone
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
@@ -83,6 +84,24 @@ def _send_web_push(user: User, title: str, body: str, icon: str = "", url: str =
             logger.warning(f"Push-ошибка для {user.username}: {e}")
 
 
+def _send_email_notification(user: User, subject: str, body: str):
+    """Отправить email-уведомление пользователю, если он согласился."""
+    email_host = getattr(settings, 'EMAIL_HOST', '')
+    if not email_host:
+        return
+    if not user.email_notifications:
+        return
+    if not user.email:
+        return
+    send_mail(
+        subject=subject,
+        message=body,
+        from_email=getattr(settings, 'EMAIL_NOTIFICATIONS_FROM', settings.DEFAULT_FROM_EMAIL),
+        recipient_list=[user.email],
+        fail_silently=True,
+    )
+
+
 def notify(user: User, kind: str, message: str, link: str = "") -> Notification:
     note = Notification.objects.create(
         user=user,
@@ -97,6 +116,18 @@ def notify(user: User, kind: str, message: str, link: str = "") -> Notification:
         body=message,
         url=link,
     )
+    # Отправляем email-уведомление (только для явно указанных типов)
+    kind_labels = {
+        Notification.Kind.POST_LIKED: "Лайк поста",
+        Notification.Kind.NEW_COMMENT: "Новый комментарий",
+        Notification.Kind.COMMENT_REPLY: "Ответ на комментарий",
+        Notification.Kind.MENTION: "Упоминание",
+        Notification.Kind.QUEST_COMPLETE: "Квест выполнен",
+        Notification.Kind.POST_DYING: "Пост умирает",
+    }
+    subject = kind_labels.get(kind)
+    if subject:
+        _send_email_notification(user, f"{subject} — Entropy", message)
     return note
 
 

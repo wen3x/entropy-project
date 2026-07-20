@@ -5,13 +5,18 @@
 {% block content %}
   <div class="entropy-card mx-auto max-w-md p-8">
     <h1 class="text-2xl font-extrabold uppercase tracking-tight">Регистрация</h1>
+    {% if email_available %}
+    <p class="mt-1 text-sm entropy-text-faint">После подтверждения email на счёт начисляется <span class="font-bold entropy-text-emphasis">50 токенов</span>.</p>
+    {% else %}
     <p class="mt-1 text-sm entropy-text-faint">После регистрации на счёт начисляется <span class="font-bold entropy-text-emphasis">50 токенов</span>.</p>
+    {% endif %}
     <form method="post" class="mt-6 space-y-4" id="register-form">
       {% csrf_token %}
       {% for field in form %}
         <div>
           <label for="{{ field.id_for_label }}" class="block text-sm font-semibold entropy-text-soft">{{ field.label }}</label>
           <div class="mt-1">{{ field }}</div>
+          {% if field.help_text %}<p class="mt-0.5 text-xs entropy-text-faint">{{ field.help_text }}</p>{% endif %}
           {% if field.errors %}<p class="mt-1 text-sm font-medium">{{ field.errors.0 }}</p>{% endif %}
         </div>
       {% endfor %}

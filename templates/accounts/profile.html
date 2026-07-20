@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load profile_tags %}
 
 {% block title %}{% if is_own_profile %}Мой профиль{% else %}{{ profile_user.username }}{% endif %}{% endblock %}
 
@@ -50,7 +51,8 @@
         {% if is_own_profile %}
         <div class="border entropy-border-muted p-4">
           <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Почта</dt>
-          <dd class="mt-1 text-lg font-bold">{% if profile_user.email %}{{ profile_user.email }}{% else %}-{% endif %}</dd>
+          <dd class="mt-1 text-lg font-bold">{% if profile_user.email %}{{ profile_user.email|email_mask }}{% else %}-{% endif %}</dd>
+          <p class="mt-0.5 text-[10px] entropy-text-faint">Показывается только вам</p>
         </div>
         {% endif %}
         <div class="border entropy-border p-4 sm:col-span-2">
@@ -69,10 +71,12 @@
         <div class="border entropy-border-muted p-4 sm:col-span-2">
           <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Срок жизни аккаунта до</dt>
           <dd class="mt-1 font-semibold">{{ profile_user.vitality_expires_at|date:"d.m.Y H:i" }}</dd>
+          <p class="mt-0.5 text-[10px] entropy-text-faint">Показывается только вам</p>
         </div>
         <div class="border entropy-border-muted p-4 sm:col-span-2">
           <dt class="text-xs font-bold uppercase tracking-wide entropy-text-faint">Регистрация</dt>
           <dd class="mt-1 font-semibold">{{ profile_user.date_joined|date:"d.m.Y H:i" }}</dd>
+          <p class="mt-0.5 text-[10px] entropy-text-faint">Показывается только вам</p>
         </div>
         {% endif %}
       </dl>
@@ -145,7 +149,8 @@
         {% if is_own_profile %}
         <div class="profile-stat border p-4" style="border-color: {{ profile_theme.fg_faint }}">
           <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Почта</dt>
-          <dd class="mt-1 text-lg font-bold" style="color: {{ profile_theme.fg }}">{% if profile_user.email %}{{ profile_user.email }}{% else %}-{% endif %}</dd>
+          <dd class="mt-1 text-lg font-bold" style="color: {{ profile_theme.fg }}">{% if profile_user.email %}{{ profile_user.email|email_mask }}{% else %}-{% endif %}</dd>
+          <p class="mt-0.5 text-[10px]" style="color: {{ profile_theme.fg_faint }}">Показывается только вам</p>
         </div>
         {% endif %}
         <div class="profile-stat border p-4 sm:col-span-2" style="border-color: {{ profile_theme.fg }}">
@@ -164,10 +169,12 @@
         <div class="profile-stat border p-4 sm:col-span-2" style="border-color: {{ profile_theme.fg_faint }}">
           <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Срок жизни аккаунта до</dt>
           <dd class="mt-1 font-semibold" style="color: {{ profile_theme.fg }}">{{ profile_user.vitality_expires_at|date:"d.m.Y H:i" }}</dd>
+          <p class="mt-0.5 text-[10px]" style="color: {{ profile_theme.fg_faint }}">Показывается только вам</p>
         </div>
         <div class="profile-stat border p-4 sm:col-span-2" style="border-color: {{ profile_theme.fg_faint }}">
           <dt class="text-xs font-bold uppercase tracking-wide" style="color: {{ profile_theme.fg_faint }}">Регистрация</dt>
           <dd class="mt-1 font-semibold" style="color: {{ profile_theme.fg }}">{{ profile_user.date_joined|date:"d.m.Y H:i" }}</dd>
+          <p class="mt-0.5 text-[10px]" style="color: {{ profile_theme.fg_faint }}">Показывается только вам</p>
         </div>
         {% endif %}
       </dl>

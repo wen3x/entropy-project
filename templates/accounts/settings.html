@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки — Entropy{% endblock %}
+
+{% block content %}
+  <div class="entropy-card mx-auto max-w-xl p-6 sm:p-10">
+    <h1 class="text-2xl font-extrabold uppercase tracking-tight">Настройки</h1>
+    <p class="mt-1 text-sm entropy-text-faint">Управление аккаунтом</p>
+
+    {% if not email_available %}
+    <div class="mt-4 entropy-message entropy-message--muted px-4 py-2 text-sm">
+      Почта не настроена. Функции сброса пароля и смены email по почте недоступны.
+      Вы можете сменить данные напрямую.
+    </div>
+    {% endif %}
+
+    <hr class="my-6 entropy-border">
+
+    {# ── Смена пароля по старому паролю ── #}
+    <h2 class="text-lg font-bold uppercase tracking-tight">Сменить пароль</h2>
+    <p class="text-xs entropy-text-faint mt-1">Введите текущий пароль и новый</p>
+    <form method="post" class="mt-4 space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="change_password">
+      {% for field in password_form %}
+      <div>
+        <label for="{{ field.id_for_label }}" class="block text-sm font-semibold entropy-text-soft">{{ field.label }}</label>
+        <div class="mt-1">{{ field }}</div>
+        {% if field.errors %}<p class="mt-1 text-sm font-medium">{{ field.errors.0 }}</p>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="entropy-btn-primary w-full py-2.5 text-sm font-semibold">Сменить пароль</button>
+    </form>
+
+    <hr class="my-6 entropy-border">
+
+    {# ── Сброс пароля через email ── #}
+    {% if email_available and user.email %}
+    <h2 class="text-lg font-bold uppercase tracking-tight">Сброс пароля по email</h2>
+    <p class="text-xs entropy-text-faint mt-1">Ссылка для сброса придёт на {{ user.email }}</p>
+    <form method="post" class="mt-4">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="send_password_reset">
+      <button type="submit" class="entropy-btn w-full py-2.5 text-sm font-semibold">Отправить ссылку</button>
+    </form>
+    <hr class="my-6 entropy-border">
+    {% endif %}
+
+    {# ── Смена email ── #}
+    <h2 class="text-lg font-bold uppercase tracking-tight">Сменить email</h2>
+    <p class="text-xs entropy-text-faint mt-1">Текущий: <strong>{{ user.email|default:"не указан" }}</strong></p>
+    <form method="post" class="mt-4 space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="change_email">
+      {% for field in email_form %}
+      <div>
+        <label for="{{ field.id_for_label }}" class="block text-sm font-semibold entropy-text-soft">{{ field.label }}</label>
+        <div class="mt-1">{{ field }}</div>
+        {% if field.errors %}<p class="mt-1 text-sm font-medium">{{ field.errors.0 }}</p>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="entropy-btn-primary w-full py-2.5 text-sm font-semibold">
+        {% if email_available %}Отправить подтверждение{% else %}Сменить{% endif %}
+      </button>
+    </form>
+
+    <p class="mt-8">
+      <a href="{% url 'profile_detail' user.username %}" class="entropy-btn px-4 py-2 text-sm font-semibold">&larr; Профиль</a>
+    </p>
+  </div>
+{% endblock %}

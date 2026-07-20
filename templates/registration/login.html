@@ -23,7 +23,12 @@
       </div>
       {% endif %}
     </form>
-    <p class="mt-6 text-center text-sm entropy-text-faint">Нет аккаунта? <a href="{% url 'register' %}" class="underline font-semibold entropy-text-emphasis">Регистрация</a></p>
+    {% if email_available %}
+    <p class="mt-4 text-center text-sm entropy-text-faint">
+      <a href="{% url 'password_reset' %}" class="underline font-semibold entropy-text-emphasis">Забыли пароль?</a>
+    </p>
+    {% endif %}
+    <p class="mt-2 text-center text-sm entropy-text-faint">Нет аккаунта? <a href="{% url 'register' %}" class="underline font-semibold entropy-text-emphasis">Регистрация</a></p>
   </div>
 {% endblock %}
 

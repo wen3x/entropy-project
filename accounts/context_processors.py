@@ -31,6 +31,8 @@ def site_context(request):
         except Exception:
             pass
 
+    email_available = bool(getattr(settings, 'EMAIL_HOST', ''))
+
     return {
         "is_god": is_god,
         "is_moderator": is_moderator,
@@ -39,4 +41,5 @@ def site_context(request):
         "donation_alerts_url": settings.DONATION_ALERTS_URL,
         "active_ban": active_ban,
         "recaptcha_site_key": getattr(settings, 'RECAPTCHA_SITE_KEY', ''),
+        "email_available": email_available,
     }

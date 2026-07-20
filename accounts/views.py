@@ -21,9 +21,8 @@ from forum.models import Node
 
 
 def legal_page(request, slug):
-    """Страница с юридическим текстом из .txt файла."""
+    """Страница с юридическим текстом."""
     files = {
-        "privacy": "privacy_policy.txt",
         "terms": "terms_of_use.txt",
     }
     info = {
@@ -33,10 +32,12 @@ def legal_page(request, slug):
     page = info.get(slug)
     if not page:
         raise Http404()
-    try:
-        content = (Path(__file__).resolve().parent.parent / files[slug]).read_text("utf-8")
-    except FileNotFoundError:
-        raise Http404()
+    content = ""
+    if slug in files:
+        try:
+            content = (Path(__file__).resolve().parent.parent / files[slug]).read_text("utf-8")
+        except FileNotFoundError:
+            pass
     return render(request, "accounts/legal.html", {"page": page, "content": content})
 
 import urllib.request
@@ -77,10 +78,43 @@ from .streaks import STREAK_MAX_DAYS, STREAK_SCHEDULE, get_streak_page_context
 from .theme import get_palette, PALETTES
 
 
+def _send_email_verification(user):
+    """Отправить письмо с подтверждением email."""
+    from django.conf import settings as dj_settings
+    from django.contrib.auth.tokens import default_token_generator
+    from django.core.mail import send_mail
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+
+    email_host = getattr(dj_settings, 'EMAIL_HOST', '')
+    if not email_host:
+        return
+
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    site_url = getattr(dj_settings, 'SITE_URL', 'http://localhost:8000')
+    link = f"{site_url}/accounts/verify/{uidb64}/{token}/"
+
+    send_mail(
+        subject="Подтверждение email — Entropy",
+        message=(
+            f"Здравствуйте, {user.username}!\n\n"
+            f"Для подтверждения email перейдите по ссылке:\n{link}\n\n"
+            f"После подтверждения вам будут начислены 50 токенов.\n\n"
+            f"С уважением, Администрация entropyy.ru"
+        ),
+        from_email=getattr(dj_settings, 'DEFAULT_FROM_EMAIL'),
+        recipient_list=[user.email],
+        fail_silently=True,
+    )
+
+
 def register(request):
+    from django.conf import settings as dj_settings
+    email_available = bool(getattr(dj_settings, 'EMAIL_HOST', ''))
+
     if request.method == "POST":
         form = RegistrationForm(request.POST)
-        # Rate limit: не чаще 1 регистрации в 10 минут с одного IP
         from django.core.cache import cache
         ip = request.META.get('REMOTE_ADDR', 'unknown')
         rl_key = f"entropy:register_rl:{ip}"
@@ -91,16 +125,20 @@ def register(request):
         elif not request.POST.get("agree"):
             messages.error(request, "Необходимо принять Пользовательское соглашение и Политику конфиденциальности.")
         elif form.is_valid():
-            form.save()
-            cache.set(rl_key, 1, timeout=600)  # 10 минут
+            user = form.save()
+            cache.set(rl_key, 1, timeout=600)
+            email_sent = False
+            if email_available and user.email:
+                _send_email_verification(user)
+                email_sent = True
             return render(
                 request,
                 "accounts/register_done.html",
-                {"username": form.cleaned_data["username"]},
+                {"username": form.cleaned_data["username"], "email_sent": email_sent},
             )
     else:
         form = RegistrationForm()
-    return render(request, "accounts/register.html", {"form": form})
+    return render(request, "accounts/register.html", {"form": form, "email_available": email_available})
 
 
 def profile_redirect(request):
@@ -589,7 +627,171 @@ def secret_panel(request):
     )
 
 
+# ── ПОДТВЕРЖДЕНИЕ EMAIL ──────────────────────────────────────────────────────
+
+
+def verify_email(request, uidb64, token):
+    """Подтвердить email по ссылке из письма."""
+    from django.conf import settings as dj_settings
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.utils.encoding import force_str
+
+    if not getattr(dj_settings, 'EMAIL_HOST', ''):
+        raise Http404()
+
+    UserModel = get_user_model()
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = UserModel.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, UserModel.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        if not user.email_verified:
+            user.email_verified = True
+            user.award_signup_tokens()
+            user.save(update_fields=["email_verified"])
+            messages.success(
+                request,
+                "Email подтверждён! Вам начислены 50 токенов.",
+            )
+        else:
+            messages.info(request, "Email уже был подтверждён ранее.")
+    else:
+        messages.error(request, "Ссылка недействительна или устарела.")
+
+    return redirect("login" if not request.user.is_authenticated else "profile")
+
+
+# ── НАСТРОЙКИ ────────────────────────────────────────────────────────────────
+
+
+@login_required
+def settings_view(request):
+    from .forms import ChangePasswordForm, ChangeEmailForm
+    from django.conf import settings as dj_settings
+    from django.contrib.auth import update_session_auth_hash
+    from django.contrib.auth.tokens import default_token_generator
+    from django.core.mail import send_mail
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+
+    email_available = bool(getattr(dj_settings, 'EMAIL_HOST', ''))
+    password_form = ChangePasswordForm(request.user)
+    email_form = ChangeEmailForm(request.user)
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+
+        if action == "change_password":
+            password_form = ChangePasswordForm(request.user, request.POST)
+            if password_form.is_valid():
+                password_form.save()
+                update_session_auth_hash(request, request.user)
+                messages.success(request, "Пароль изменён.")
+                return redirect("settings")
+
+        elif action == "send_password_reset":
+            if email_available:
+                from django.contrib.auth.forms import PasswordResetForm
+                reset_form = PasswordResetForm({"email": request.user.email})
+                if reset_form.is_valid():
+                    reset_form.save(
+                        request=request,
+                        from_email=getattr(dj_settings, 'DEFAULT_FROM_EMAIL'),
+                        email_template_name="registration/password_reset_email.html",
+                    )
+                    messages.success(
+                        request,
+                        "Ссылка для сброса пароля отправлена на вашу почту.",
+                    )
+                else:
+                    messages.error(request, "У вашего аккаунта не указан email.")
+            else:
+                messages.error(request, "Почта не настроена.")
+            return redirect("settings")
+
+        elif action == "change_email":
+            email_form = ChangeEmailForm(request.user, request.POST)
+            if email_form.is_valid():
+                new_email = email_form.cleaned_data["new_email"]
+                # Отправляем подтверждение на старый email
+                if email_available:
+                    uidb64 = urlsafe_base64_encode(force_bytes(request.user.pk))
+                    token = default_token_generator.make_token(request.user)
+                    site_url = getattr(dj_settings, 'SITE_URL', 'http://localhost:8000')
+                    confirm_link = f"{site_url}/accounts/confirm-email-change/{uidb64}/{token}/?new_email={new_email}"
+                    send_mail(
+                        subject="Смена email — Entropy",
+                        message=(
+                            f"Здравствуйте, {request.user.username}!\n\n"
+                            f"Для смены email на {new_email} перейдите по ссылке:\n{confirm_link}\n\n"
+                            f"Если вы не запрашивали смену, проигнорируйте это письмо.\n\n"
+                            f"С уважением, Администрация entropyy.ru"
+                        ),
+                        from_email=getattr(dj_settings, 'DEFAULT_FROM_EMAIL'),
+                        recipient_list=[request.user.email],
+                        fail_silently=True,
+                    )
+                    messages.success(
+                        request,
+                        f"Ссылка для подтверждения отправлена на ваш текущий email.",
+                    )
+                else:
+                    # Если почта не настроена — меняем сразу
+                    request.user.email = new_email
+                    request.user.email_verified = True
+                    request.user.save(update_fields=["email", "email_verified"])
+                    messages.success(request, "Email изменён.")
+                return redirect("settings")
+
+    return render(request, "accounts/settings.html", {
+        "password_form": password_form,
+        "email_form": email_form,
+        "email_available": email_available,
+    })
+
+
+@login_required
+def confirm_email_change(request, uidb64, token):
+    """Подтвердить смену email по ссылке."""
+    from django.conf import settings as dj_settings
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.utils.encoding import force_str
+
+    if not getattr(dj_settings, 'EMAIL_HOST', ''):
+        raise Http404()
+
+    UserModel = get_user_model()
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = UserModel.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, UserModel.DoesNotExist):
+        user = None
+
+    new_email = request.GET.get("new_email", "")
+    if not new_email:
+        messages.error(request, "Отсутствует новый email.")
+        return redirect("settings")
+
+    if user is not None and default_token_generator.check_token(user, token):
+        if user.pk != request.user.pk:
+            messages.error(request, "Это не ваш аккаунт.")
+            return redirect("settings")
+        user.email = new_email.lower().strip()
+        user.email_verified = True
+        user.save(update_fields=["email", "email_verified"])
+        messages.success(request, "Email успешно изменён!")
+    else:
+        messages.error(request, "Ссылка недействительна или устарела.")
+
+    return redirect("settings")
+
+
 # ── ЖАЛОБЫ ───────────────────────────────────────────────────────────────────
+
 
 
 def _can_handle_complaints(user) -> bool:

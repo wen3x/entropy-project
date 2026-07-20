@@ -21,7 +21,7 @@
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {% for node in nodes %}
       <a href="{% url 'forum:node_detail' node.slug %}" class="entropy-card p-6 block hover:opacity-80 transition-opacity">
-        <h2 class="text-lg font-extrabold uppercase tracking-tight">{{ node.name }}</h2>
+        <h2 class="text-lg font-extrabold tracking-tight">{{ node.name }}</h2>
         {% if node.description %}
           <p class="mt-2 text-sm entropy-text-muted">{{ node.description|truncatechars:80 }}</p>
         {% endif %}
