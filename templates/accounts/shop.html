@@ -22,7 +22,7 @@
       {% for item in shop_items %}
         {% with item_code=item.code %}
         {% with theme_color=item_code|cut:"profile-color-" %}
-        <article class="entropy-panel p-6">
+        <article class="entropy-panel p-6 shop-item">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="min-w-0 flex-1">
               <h2 class="text-lg font-bold">{{ item.title }}</h2>

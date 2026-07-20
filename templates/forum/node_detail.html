@@ -52,8 +52,8 @@
       </div>
     {% endif %}
 
-    <div class="mt-6 flex flex-wrap gap-3">
-      <a href="{% url 'forum:post_create_in_node' node.slug %}" class="entropy-btn-primary inline-block px-6 py-3 text-sm font-semibold">+ Новый пост</a>
+    <div class="mt-6 flex flex-wrap gap-3 node-actions">
+      <a href="{% url 'forum:post_create_in_node' node.slug %}" class="entropy-btn-primary inline-block px-6 py-3 text-sm font-semibold text-center">+ Новый пост</a>
       {% if user.is_authenticated %}
         <button type="button" id="quick-media-btn" class="entropy-btn inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold">
           <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
