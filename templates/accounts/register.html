@@ -24,6 +24,11 @@
         </label>
       </div>
       <button type="submit" class="entropy-btn-primary w-full py-2.5 text-sm font-semibold">Создать аккаунт</button>
+      {% if recaptcha_site_key %}
+      <div class="mt-3 text-center">
+        <span class="text-[10px] uppercase tracking-widest entropy-text-faint">Защищено reCAPTCHA</span>
+      </div>
+      {% endif %}
     </form>
     <p class="mt-6 text-center text-sm entropy-text-faint">Уже есть аккаунт? <a href="{% url 'login' %}" class="underline font-semibold entropy-text-emphasis">Вход</a></p>
   </div>

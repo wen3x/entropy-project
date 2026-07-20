@@ -17,6 +17,11 @@
       {% endfor %}
       {% for field in form.hidden_fields %}{{ field }}{% endfor %}
       <button type="submit" class="entropy-btn-primary w-full py-2.5 text-sm font-semibold">Войти</button>
+      {% if recaptcha_site_key %}
+      <div class="mt-3 text-center">
+        <span class="text-[10px] uppercase tracking-widest entropy-text-faint">Защищено reCAPTCHA</span>
+      </div>
+      {% endif %}
     </form>
     <p class="mt-6 text-center text-sm entropy-text-faint">Нет аккаунта? <a href="{% url 'register' %}" class="underline font-semibold entropy-text-emphasis">Регистрация</a></p>
   </div>

@@ -1,22 +1,22 @@
 /* ========================================================================
-   Entropy — Service Worker
+   Entropy — Service Worker v4
    ======================================================================== */
 
-const CACHE = "entropy-v2";
+const CACHE = "entropy-v4";
+const STATIC_CACHE = "entropy-static-v4";
+
+// ── Pre-cached static assets ──
 const ASSETS = [
   "/static/css/entropy-site.css",
   "/static/js/entropy-theme.js",
   "/static/js/entropy-likes.js",
-  "/static/img/logo.svg",
-  "/static/img/logo.png",
   "/static/img/favicon.png",
-
 ];
 
 // ── Install: cache static assets ──
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => {
+    caches.open(STATIC_CACHE).then((cache) => {
       return cache.addAll(ASSETS).catch(() => {
         // Non-critical; proceed even if some fail
       });
@@ -30,26 +30,101 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))
+        keys
+          .filter((k) => k !== CACHE && k !== STATIC_CACHE)
+          .map((k) => caches.delete(k))
       );
     })
   );
   self.clients.claim();
 });
 
-// ── Fetch: network-first, fallback to cache ──
-self.addEventListener("fetch", (event) => {
-  // Only handle GET requests
-  if (event.request.method !== "GET") return;
+// ── Helper: should this request be cached? ──
+function isStaticAsset(url) {
+  return url.includes("/static/");
+}
 
-  // Skip non-http(s) requests
+function isPage(url) {
+  return (
+    url.origin === self.location.origin &&
+    !url.pathname.includes("/static/") &&
+    !url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|json)$/i)
+  );
+}
+
+function isNavigation(url) {
+  return isPage(url) && url.pathname !== "/sw.js" && url.pathname !== "/manifest.json";
+}
+
+// ── Fetch: smarter strategy ──
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
   if (!event.request.url.startsWith("http")) return;
 
+  const url = new URL(event.request.url);
+
+  // ── Static assets: cache-first ──
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.open(STATIC_CACHE).then((cache) => {
+        return cache.match(event.request).then((cached) => {
+          const fetchPromise = fetch(event.request)
+            .then((response) => {
+              if (response.ok) {
+                cache.put(event.request, response.clone());
+              }
+              return response;
+            })
+            .catch(() => cached);
+          return cached || fetchPromise;
+        });
+      })
+    );
+    return;
+  }
+
+  // ── Navigations (HTML pages): network-first, cache fallback, offline fallback ──
+  if (isNavigation(url)) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE).then((cache) => {
+              cache.put(event.request, clone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cached) => {
+            if (cached) return cached;
+            // Offline: serve the offline page for navigations
+            return caches.match("/offline/");
+          });
+        })
+    );
+    return;
+  }
+
+  // ── API calls (like AJAX): network-only, no cache ──
+  if (url.pathname.startsWith("/accounts/online/")) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return new Response(JSON.stringify({ count: "?" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      })
+    );
+    return;
+  }
+
+  // ── Everything else: network-first ──
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful responses for static assets
-        if (response.ok && event.request.url.includes("/static/")) {
+        if (response.ok && response.type === "basic") {
           const clone = response.clone();
           caches.open(CACHE).then((cache) => {
             cache.put(event.request, clone);
@@ -58,10 +133,7 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => {
-        // Offline: serve from cache
-        return caches.match(event.request).then((cached) => {
-          return cached || new Response("Offline", { status: 503 });
-        });
+        return caches.match(event.request);
       })
   );
 });
@@ -106,7 +178,6 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      // If already open, focus and navigate
       for (const client of windowClients) {
         if (client.url.startsWith(self.location.origin) && "focus" in client) {
           client.focus();
@@ -116,7 +187,6 @@ self.addEventListener("notificationclick", (event) => {
           return;
         }
       }
-      // Otherwise open new window
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
