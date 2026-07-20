@@ -1,9 +1,9 @@
 /* ========================================================================
-   Entropy — Service Worker v3
+   Entropy — Service Worker v4
    ======================================================================== */
 
-const CACHE = "entropy-v3";
-const STATIC_CACHE = "entropy-static-v3";
+const CACHE = "entropy-v4";
+const STATIC_CACHE = "entropy-static-v4";
 
 // ── Pre-cached static assets ──
 const ASSETS = [

@@ -9,13 +9,13 @@
     {% if form.errors %}<p class="mt-4 border entropy-border px-3 py-2 text-sm font-medium">Неверное имя или пароль.</p>{% endif %}
     <form method="post" class="mt-6 space-y-4" id="login-form">
       {% csrf_token %}
-      {% for field in form %}
+      {% for field in form.visible_fields %}
         <div>
           <label for="{{ field.id_for_label }}" class="block text-sm font-semibold entropy-text-soft">{{ field.label }}</label>
           <div class="mt-1">{{ field }}</div>
         </div>
       {% endfor %}
-      {{ form.g_recaptcha_response }}
+      {% for field in form.hidden_fields %}{{ field }}{% endfor %}
       <button type="submit" class="entropy-btn-primary w-full py-2.5 text-sm font-semibold">Войти</button>
     </form>
     <p class="mt-6 text-center text-sm entropy-text-faint">Нет аккаунта? <a href="{% url 'register' %}" class="underline font-semibold entropy-text-emphasis">Регистрация</a></p>

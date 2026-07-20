@@ -573,27 +573,27 @@ html[data-site-theme="dark"] .post-golden {
   transform: translate(3px, 3px);
 }
 
-/* ── GitHub (neobrutalist, black-purple) ── */
+/* ── GitHub (neobrutalist, purple-dark-purple, matching DA) ── */
 .github-btn {
   display: block;
   text-align: center;
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #e0d0ff;
-  background: linear-gradient(135deg, #1a1a2e 0%, #2d1b69 50%, #1a0a2e 100%);
-  border: var(--entropy-border-width) solid #7c3aed;
+  color: #000;
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 50%, #5b21b6 100%);
+  border: var(--entropy-border-width) solid #4c1d95;
   min-height: 2.75rem;
   border-radius: 0;
-  box-shadow: 3px 3px 0 0 #7c3aed;
+  box-shadow: 3px 3px 0 0 #4c1d95;
   transition: box-shadow 0.15s ease, transform 0.1s ease, filter 0.2s ease;
 }
 
 .github-btn:hover {
-  color: #f0e6ff;
-  filter: brightness(1.15);
+  color: #000;
+  filter: brightness(1.08);
   transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0 0 #7c3aed, 0 0 18px rgba(124, 58, 237, 0.45);
+  box-shadow: 5px 5px 0 0 #4c1d95, 0 0 18px rgba(124, 58, 237, 0.55);
 }
 
 .github-btn:active {
