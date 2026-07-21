@@ -256,7 +256,7 @@
     if (loader) loader.classList.remove('hidden');
 
     currentPage++;
-    var params = new URLSearchParams({ page: currentPage, per_page: '12' });
+    var params = new URLSearchParams({ page: currentPage, per_page: '6' });
     if (nodeSlug) params.set('node_slug', nodeSlug);
 
     fetch('/posts/more/?' + params.toString(), {

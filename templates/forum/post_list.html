@@ -223,7 +223,7 @@
     loader.classList.remove('hidden');
 
     currentPage++;
-    var params = new URLSearchParams({ page: currentPage, per_page: 12 });
+    var params = new URLSearchParams({ page: currentPage, per_page: 6 });
 
     fetch('/posts/more/?' + params.toString(), {
       headers: { 'X-Requested-With': 'XMLHttpRequest' }

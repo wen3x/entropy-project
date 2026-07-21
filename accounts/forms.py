@@ -148,7 +148,8 @@ class ChangeEmailForm(forms.Form):
 
     def clean_current_email(self):
         email = self.cleaned_data["current_email"].lower().strip()
-        if email != self.user.email.lower():
+        # Если email не подтверждён — пропускаем проверку текущего email
+        if self.user.email_verified and email != self.user.email.lower():
             raise ValidationError("Неверный текущий email.")
         return email
 

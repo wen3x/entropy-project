@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import Count, F, Q
+from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 import django.db.utils
 from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseGone, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -230,37 +230,53 @@ def post_list(request):
         )
         search_results = {"q": q, "nodes": node_results, "posts": post_results}
     
+    liked_slugs = set()
+    
     # ── Regular post list ──
     if not q:
         posts = (
             Post.objects.filter(expires_at__gt=now, is_active=True)
             .select_related("author", "node")
             .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
-            .order_by("-is_golden", "-is_pinned", "-like_count", "-created_at")
+            .order_by(
+                Case(
+                    When(is_pinned=True, then=Value(0)),
+                    When(is_golden=True, then=Value(1)),
+                    default=Value(2),
+                    output_field=IntegerField()
+                ),
+                "?",
+            )
         )
+        # Показываем только 6 постов на старте, остальные через infinite scroll
+        display_posts = list(posts[:6])
+        # Определяем liked_slugs только для отображаемых постов
+        if request.user.is_authenticated and display_posts:
+            post_ct_display = ContentType.objects.get_for_model(Post)
+            liked_ids_display = set(
+                Like.objects.filter(
+                    user=request.user,
+                    content_type=post_ct_display,
+                    object_id__in=[p.pk for p in display_posts],
+                    is_active=True,
+                ).values_list("object_id", flat=True)
+            )
+            for post in display_posts:
+                if post.pk in liked_ids_display:
+                    liked_slugs.add(post.slug)
+        posts = display_posts
     else:
         posts = Post.objects.none()
     
-    liked_slugs = set()
-    post_ct = ContentType.objects.get_for_model(Post)
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and not search_results:
         check_dying_posts_for_user(request.user)
-        liked_ids = set(
-            Like.objects.filter(
-                user=request.user,
-                content_type=post_ct,
-                object_id__in=posts.values_list("pk", flat=True),
-                is_active=True,
-            ).values_list("object_id", flat=True)
-        )
-        # Избегаем лишнего Post-запроса: slugs берём из уже загруженного queryset
-        # posts.values_list() — это подзапрос внутри Like-запроса, а не отдельный SQL
-        for post in posts:
-            if post.pk in liked_ids:
-                liked_slugs.add(post.slug)
 
     # ── Moderator IDs for badge display ──
-    author_ids = list(posts.values_list("author_id", flat=True).distinct())
+    # posts может быть списком (не поиск) или QuerySet.none() (поиск)
+    if isinstance(posts, (list, tuple)):
+        author_ids = list({p.author_id for p in posts})
+    else:
+        author_ids = list(posts.values_list("author_id", flat=True).distinct())
     moderator_ids = get_moderator_ids(author_ids) if author_ids else set()
 
     context = {
@@ -837,27 +853,29 @@ def node_detail(request, node_slug):
     """Страница узла со списком постов в нём."""
     node = get_object_or_404(Node, slug=node_slug, is_active=True)
     now = timezone.now()
-    posts = (
+    all_posts = (
         Post.objects.filter(node=node, expires_at__gt=now, is_active=True)
         .select_related("author")
         .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
         .order_by("-is_golden", "-is_pinned", "-like_count", "-created_at")
     )
-    total_posts = posts.count()
+    total_posts = all_posts.count()
+    posts = list(all_posts[:6])  # 6 постов на старте, остальные через infinite scroll
+    post_ids = [p.pk for p in posts]
     total_likes = Like.objects.filter(
         content_type=ContentType.objects.get_for_model(Post),
-        object_id__in=posts.values_list("pk", flat=True),
+        object_id__in=post_ids,
         is_active=True,
     ).count()
 
     liked_slugs = set()
     post_ct = ContentType.objects.get_for_model(Post)
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and post_ids:
         liked_ids = set(
             Like.objects.filter(
                 user=request.user,
                 content_type=post_ct,
-                object_id__in=posts.values_list("pk", flat=True),
+                object_id__in=post_ids,
                 is_active=True,
             ).values_list("object_id", flat=True)
         )
@@ -969,7 +987,7 @@ def node_detail(request, node_slug):
         return redirect("forum:node_detail", node_slug=node.slug)
 
     # ── Moderator IDs for badge display ──
-    author_ids = list(posts.values_list("author_id", flat=True).distinct())
+    author_ids = list({p.author_id for p in posts})
     moderator_ids = get_moderator_ids(author_ids) if author_ids else set()
 
     return render(
@@ -1234,12 +1252,24 @@ def post_list_json(request):
         Post.objects.filter(is_active=True, expires_at__gt=now)
         .select_related("author", "node")
         .annotate(like_count=Count("likes", filter=ACTIVE_LIKE))
-        .order_by("-is_golden", "-is_pinned", "-like_count", "-created_at")
     )
     
     if node_slug:
         node = get_object_or_404(Node, slug=node_slug, is_active=True)
         posts = posts.filter(node=node)
+        # Для страницы узла оставляем старую сортировку
+        posts = posts.order_by("-is_golden", "-is_pinned", "-like_count", "-created_at")
+    else:
+        # Для главной — рандомный порядок с закреплёнными/золотыми сверху
+        posts = posts.order_by(
+            Case(
+                When(is_pinned=True, then=Value(0)),
+                When(is_golden=True, then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField()
+            ),
+            "?",
+        )
     
     total = posts.count()
     offset = (page - 1) * per_page

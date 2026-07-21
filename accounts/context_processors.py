@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.conf import settings
 
 
@@ -33,6 +34,22 @@ def site_context(request):
 
     email_available = bool(getattr(settings, 'EMAIL_HOST', ''))
 
+    # ── Recent posts for the right column ──
+    recent_posts = []
+    if request.user.is_authenticated or True:  # always fetch for all users
+        try:
+            from django.utils import timezone
+            from forum.models import Post
+            now = timezone.now()
+            cutoff = now - timedelta(hours=24)
+            recent_posts = list(
+                Post.objects.filter(is_active=True, expires_at__gt=now, created_at__gte=cutoff)
+                .select_related("author", "node")
+                .order_by("-created_at")[:15]
+            )
+        except Exception:
+            recent_posts = []
+
     return {
         "is_god": is_god,
         "is_moderator": is_moderator,
@@ -42,4 +59,5 @@ def site_context(request):
         "active_ban": active_ban,
         "recaptcha_site_key": getattr(settings, 'RECAPTCHA_SITE_KEY', ''),
         "email_available": email_available,
+        "recent_posts": recent_posts,
     }
