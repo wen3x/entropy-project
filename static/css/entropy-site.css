@@ -40,17 +40,25 @@ body {
 
 *, *::before, *::after { box-sizing: border-box; border-color: var(--entropy-border); }
 
-/* ── Footer Fixes ── */
+/* ── Header + Footer ── */
+.entropy-header {
+  background: #ffffff !important;
+  border-bottom: var(--entropy-border-width) solid var(--entropy-border);
+}
+
+html[data-site-theme="dark"] .entropy-header {
+  background: #000000 !important;
+}
+
 .entropy-footer {
   border-top: var(--entropy-border-width) solid var(--entropy-border);
   color: var(--entropy-fg-faint);
-  background: #ffffff; /* Светлая тема */
   padding: 2rem 1rem;
+  background: #ffffff !important;
 }
 
 html[data-site-theme="dark"] .entropy-footer {
-  background: #000000 !important; /* Принудительно черный футер в темной теме */
-  color: var(--entropy-fg-faint);
+  background: #000000 !important;
 }
 
 /* ── Logo Logic ── */
