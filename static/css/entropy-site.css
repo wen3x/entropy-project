@@ -204,6 +204,7 @@ a.entropy-link:hover,
 }
 
 .entropy-footer {
+  background: var(--entropy-surface);
   border-top: var(--entropy-border-width) solid var(--entropy-border);
   color: var(--entropy-fg-faint);
 }

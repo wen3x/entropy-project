@@ -26,9 +26,13 @@
     </p>
 
     {# Title #}
+    {% if post.title %}
     <h2 class="mt-2 text-xl font-bold post-card-title">
       <a href="{{ post.get_absolute_url }}" class="post-card-link">{{ post.title }}</a>
     </h2>
+    {% else %}
+    <a href="{{ post.get_absolute_url }}" class="post-card-link" style="position:absolute;inset:0;z-index:1;"></a>
+    {% endif %}
 
     {# Media: image / gif / audio #}
     <div class="post-media mt-3">
@@ -84,7 +88,7 @@
             </button>
           </form>
           <form action="{% url 'forum:post_delete' post.slug %}" method="post" class="inline"
-                onsubmit="return confirm('Отправить пост «{{ post.title|escapejs }}» в Кладбище?');">
+                onsubmit="return confirm('Отправить пост в Кладбище?');">
             {% csrf_token %}
             <button type="submit" class="entropy-btn-invert px-2 py-0.5 text-[10px]">Удалить</button>
           </form>

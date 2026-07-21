@@ -16,7 +16,7 @@
   <ul class="divide-y entropy-divide border entropy-border">
     {% for post in posts %}
       <li class="flex flex-wrap items-center justify-between gap-4 px-4 py-4 font-mono text-sm">
-        <p class="entropy-text-soft">{{ post.title|corrupt_title }}</p>
+        <p class="entropy-text-soft">{% if post.title %}{{ post.title|corrupt_title }}{% else %}&mdash;{% endif %}</p>
         {% if is_god or is_moderator %}
         <div class="flex flex-wrap gap-2">
           {% if is_moderator %}

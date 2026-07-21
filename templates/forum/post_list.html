@@ -77,9 +77,11 @@
                 {% endif %}
                 <span>&middot; {{ post.created_at|date:"d.m.Y H:i" }}</span>
               </p>
+              {% if post.title %}
               <h3 class="mt-1 font-bold">
                 <a href="{% if post.node %}{% url 'forum:post_detail_in_node' post.node.slug post.slug %}{% else %}{% url 'forum:post_detail' post.slug %}{% endif %}" class="hover:underline">{{ post.title }}</a>
               </h3>
+              {% endif %}
               {% if post.image %}
                 <img src="{{ post.image }}" alt="" class="mt-2 max-h-48 w-full object-cover entropy-border" loading="lazy">
               {% endif %}

@@ -2,20 +2,20 @@
 {% load profile_tags %}
 {% load graveyard_tags %}
 
-{% block title %}{{ post.title }} — Entropy{% endblock %}
+{% block title %}{% if post.title %}{{ post.title }} — {% endif %}Entropy{% endblock %}
 
 {% block seo_meta %}
 <meta name="description" content="{{ post.content|truncatechars:160 }}">
 <meta name="robots" content="index, follow">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Entropy">
-<meta property="og:title" content="{{ post.title }}">
+<meta property="og:title" content="{% if post.title %}{{ post.title }}{% else %}Пост на Entropy{% endif %}">
 <meta property="og:description" content="{{ post.content|truncatechars:200 }}">
 <meta property="og:url" content="{{ request.build_absolute_uri }}">
 <meta property="article:author" content="{{ post.author.username }}">
 <meta property="article:published_time" content="{{ post.created_at|date:'c' }}">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="{{ post.title }}">
+<meta name="twitter:title" content="{% if post.title %}{{ post.title }}{% else %}Пост на Entropy{% endif %}">
 <meta name="twitter:description" content="{{ post.content|truncatechars:160 }}">
 {% endblock %}
 
@@ -41,7 +41,7 @@
     </p>
 
     {# Title #}
-    <h1 class="mt-2 text-3xl font-extrabold tracking-tight">{{ post.title }}</h1>
+    {% if post.title %}<h1 class="mt-2 text-3xl font-extrabold tracking-tight">{{ post.title }}</h1>{% endif %}
 
     {# Media: image / gif / audio #}
     <div class="post-media post-media--detail mt-4">

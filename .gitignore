@@ -6,5 +6,12 @@ venv/
 *.sqlite3
 *.log
 nul
-staticfilesattached_assets/
+
+# Replit
+staticfiles/
+attached_assets/
 .replit
+replit.md
+.agents/
+.cache/
+.local/

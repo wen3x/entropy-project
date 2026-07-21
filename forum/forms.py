@@ -57,6 +57,11 @@ class PostForm(forms.ModelForm):
             "content": forms.Textarea(attrs={"rows": 6, "class": INPUT, "placeholder": "Текст поста... (@username — упомянуть пользователя)"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["title"].required = False
+        self.fields["content"].required = False
+
     def clean(self):
         cleaned = super().clean()
         media_type = cleaned.get("media_type")

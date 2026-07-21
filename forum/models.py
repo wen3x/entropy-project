@@ -63,8 +63,8 @@ class Post(models.Model):
         related_name="posts",
     )
     slug = models.CharField(max_length=11, unique=True, db_index=True, blank=True)
-    title = models.CharField(max_length=50)
-    content = models.TextField()
+    title = models.CharField(max_length=50, blank=True, default="")
+    content = models.TextField(blank=True, default="")
     # Cloudinary media
     image = models.CharField(max_length=1024, blank=True, default="")
     audio = models.CharField(max_length=1024, blank=True, default="")
@@ -80,7 +80,7 @@ class Post(models.Model):
         ordering = ("-created_at",)
 
     def __str__(self):
-        return self.title
+        return self.title or f"Пост #{self.pk}"
 
     def save(self, *args, **kwargs):
         if not self.slug:

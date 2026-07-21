@@ -574,7 +574,7 @@ def post_delete(request, slug):
     if post.is_active:
         post.is_active = False
         post.save(update_fields=["is_active"])
-        messages.success(request, f"Пост «{post.title}» отправлен в Кладбище.")
+        messages.success(request, f"Пост «{post.title or post.slug}» отправлен в Кладбище.")
     return redirect("forum:graveyard_list")
 
 
@@ -587,7 +587,7 @@ def post_resurrect(request, slug):
     post.is_active = True
     post.expires_at = timezone.now() + timedelta(days=7)
     post.save(update_fields=["is_active", "expires_at"])
-    messages.success(request, f"Пост «{post.title}» воскрешён на 7 дней.")
+    messages.success(request, f"Пост «{post.title or post.slug}» воскрешён на 7 дней.")
     return redirect("forum:graveyard_list")
 
 
@@ -597,7 +597,7 @@ def post_destroy(request, slug):
     if not is_god(request.user):
         return HttpResponseForbidden("Доступ запрещён.")
     post = get_object_or_404(Post, slug=slug)
-    title = post.title
+    title = post.title or post.slug
     post.delete()
     messages.success(request, f"Пост «{title}» уничтожен безвозвратно.")
     return redirect("forum:graveyard_list")
@@ -723,14 +723,14 @@ def toggle_pin_post(request, slug):
         if post.is_pinned:
             post.is_pinned = False
             post.save(update_fields=["is_pinned"])
-            messages.info(request, f"Пост «{post.title}» откреплён.")
+            messages.info(request, f"Пост «{post.title or post.slug}» откреплён.")
         else:
             Post.objects.filter(is_pinned=True).exclude(pk=post.pk).update(
                 is_pinned=False
             )
             post.is_pinned = True
             post.save(update_fields=["is_pinned"])
-            messages.success(request, f"Пост «{post.title}» закреплён в ленте.")
+            messages.success(request, f"Пост «{post.title or post.slug}» закреплён в ленте.")
 
     return redirect("forum:post_list")
 
@@ -915,7 +915,7 @@ def node_detail(request, node_slug):
     if request.method == "POST" and request.POST.get("action") == "quick_media_post":
         if request.user.is_authenticated:
             User = get_user_model()
-            title = request.POST.get("title", "").strip() or "📷 Медиа"
+            title = request.POST.get("title", "").strip()
             content = request.POST.get("content", "").strip()
             media_file = request.FILES.get("media_file")
             media_url = request.POST.get("media_url", "").strip()
