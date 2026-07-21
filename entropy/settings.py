@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from django.urls import reverse_lazy
 from dotenv import load_dotenv
+import dj_database_url
 
 # 1. Загрузка окружения
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -65,10 +66,10 @@ WSGI_APPLICATION = 'entropy.wsgi.application'
 
 # 5. База данных (локальный SQLite, для продакшена — через DATABASE_URL)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600
+    )
 }
 
 # 6. Валидация паролей
