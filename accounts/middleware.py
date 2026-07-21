@@ -240,18 +240,21 @@ class DailyStreakMiddleware:
                 request.user.refresh_from_db()
                 day = summary["streak_day"]
                 reward = summary["tokens_reward"]
-                if summary["has_free_post"]:
+                if summary["free_posts_awarded"]:
                     messages.success(
                         request,
-                        f"День {day} стрика! Вы получили право на один бесплатный пост.",
+                        f"Заряд: день {day}! Получен бесплатный пост.",
                     )
-                elif reward:
+                if reward:
+                    extra = ""
+                    if summary.get("theme_awarded"):
+                        extra = " И получена новая тема профиля!"
                     messages.success(
                         request,
-                        f"День {day} стрика: +{reward} токенов.",
+                        f"Заряд: день {day}! +{reward} токенов.{extra}",
                     )
-                else:
-                    messages.info(request, f"День {day} стрика. Продолжайте завтра!")
+                elif not summary["free_posts_awarded"] and not reward:
+                    messages.info(request, f"Заряд: день {day}. Продолжайте завтра!")
 
         return self.get_response(request)
 

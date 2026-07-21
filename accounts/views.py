@@ -244,7 +244,7 @@ def streaks_page(request):
             "current_streak": 0,
             "progress_pct": 0,
             "streak_max_days": STREAK_MAX_DAYS,
-            "has_free_post": False,
+            "free_posts": 0,
         }
     return render(request, "accounts/streaks.html", ctx)
 
@@ -388,11 +388,24 @@ def shop_view(request):
         owned_colors = []
         current_color = ""
 
+    # Вычисляем цену со скидкой для каждого товара
+    items_with_discount = []
+    for item in items:
+        discount_pct = item.discount_pct or 0
+        discounted_price = max(0, int(item.price_tokens * (100 - discount_pct) / 100))
+        items_with_discount.append({
+            "item": item,
+            "original_price": item.price_tokens,
+            "price": discounted_price,
+            "has_discount": discount_pct > 0 and discounted_price < item.price_tokens,
+            "discount_pct": discount_pct,
+        })
+
     return render(
         request,
         "accounts/shop.html",
         {
-            "shop_items": items,
+            "shop_items_with_discount": items_with_discount,
             "user_tokens": user_tokens,
             "owned_colors": owned_colors,
             "current_color": current_color,
@@ -423,8 +436,12 @@ def inventory_view(request):
                 "matrix": "Матрица",
                 "sunset": "Закат энтропии",
                 "gold": "Золотой",
-                "red": "Красный",
-                "blue": "Синий",
+                "red": "Алый закат",
+                "blue": "Бездонная синева",
+                "purple": "Сиреневый туман",
+                "pink": "Неоновая роза",
+                "gray": "Пепел эпохи",
+                "metal": "Жидкий металл",
                 "green": "Зелёный",
             }.get(color_key, color_key),
             "color": palette["fg"],
@@ -487,6 +504,26 @@ def secret_panel(request):
                 messages.success(request, f"«{item.title}» {state} в магазине.")
             else:
                 messages.error(request, "Товар не найден.")
+        elif action == "set_discount":
+            item_id = request.POST.get("item_id")
+            discount_str = request.POST.get("discount_pct", "0")
+            try:
+                discount_pct = int(discount_str)
+                if discount_pct < 0 or discount_pct > 100:
+                    messages.error(request, "Скидка должна быть от 0 до 100%.")
+                else:
+                    item = ShopItem.objects.filter(pk=item_id).first()
+                    if item:
+                        item.discount_pct = discount_pct
+                        item.save(update_fields=["discount_pct"])
+                        if discount_pct > 0:
+                            messages.success(request, f"На «{item.title}» установлена скидка {discount_pct}%.")
+                        else:
+                            messages.success(request, f"Скидка на «{item.title}» убрана.")
+                    else:
+                        messages.error(request, "Товар не найден.")
+            except (ValueError, TypeError):
+                messages.error(request, "Некорректное значение скидки.")
         elif action == "ban_user":
             username = request.POST.get("ban_username", "").strip()
             node_slug = request.POST.get("ban_node", "").strip()

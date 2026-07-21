@@ -4,23 +4,23 @@
 
 {% block content %}
   <div class="mb-8 border-b entropy-border pb-6">
-    <h1 class="text-3xl font-extrabold uppercase tracking-tight">Система стриков</h1>
-    <p class="mt-2 text-sm entropy-text-muted">Заходите каждый день подряд, чтобы получать награды.</p>
+    <h1 class="text-3xl font-extrabold uppercase tracking-tight">Заряд</h1>
+    <p class="mt-2 text-sm entropy-text-muted">Заходите каждый день подряд, чтобы получать награды. Каждый день — случайное число токенов.</p>
   </div>
 
   <section class="entropy-card mb-8 p-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3">
         <svg class="h-10 w-10 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/>
+          <path d="M13 2L4.5 12.5h6L7 22l12-11.5h-6L13 2z"/>
         </svg>
         <div>
-          <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">Текущий стрик</p>
+          <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">Текущий заряд</p>
           <p class="text-3xl font-extrabold tabular-nums">{{ current_streak }} <span class="text-lg font-medium entropy-text-muted">/ {{ streak_max_days }} дн.</span></p>
         </div>
       </div>
-      {% if has_free_post %}
-        <p class="border entropy-border px-4 py-2 text-sm font-semibold">Бесплатный пост доступен</p>
+      {% if free_posts %}
+        <p class="border entropy-border px-4 py-2 text-sm font-semibold">Бесплатных постов: {{ free_posts }}</p>
       {% endif %}
     </div>
     <div class="mt-6">
@@ -34,10 +34,10 @@
     </div>
   </section>
 
-  {# ── Календарь стриков (GitHub-style) ── #}
+  {# ── Календарь ── #}
   <section class="entropy-card mb-8 p-6">
     <h2 class="text-lg font-extrabold uppercase tracking-tight mb-4">Календарь активности</h2>
-    <p class="text-xs entropy-text-faint mb-4">Последние 60 дней. Закрашены дни непрерывного стрика.</p>
+    <p class="text-xs entropy-text-faint mb-4">Последние 60 дней. Закрашены дни непрерывного Заряда.</p>
     <div class="streak-calendar">
       {% for cd in calendar_days %}
         <div class="streak-calendar__day
@@ -55,6 +55,7 @@
 
   <section class="entropy-card p-6">
     <h2 class="text-lg font-extrabold uppercase tracking-tight">Награды по дням</h2>
+    <p class="mt-2 text-xs entropy-text-muted">Токены выдаются случайно в диапазоне. Каждый 7-й день — бесплатный пост. На 28-й день — случайная тема профиля!</p>
     <ul class="mt-6 space-y-0 divide-y entropy-divide border-t entropy-border">
       {% for item in schedule %}
         <li class="flex flex-wrap items-center justify-between gap-4 py-4 {% if item.day == current_streak %}entropy-surface-muted{% endif %}">
@@ -64,7 +65,9 @@
           </div>
           <div class="text-right text-sm font-bold">
             {% if item.free_post %}
-              Бесплатный пост
+              <span class="text-yellow-600">🆓 Бесплатный пост</span>
+            {% elif item.theme %}
+              <span class="text-purple-500">🎨 {{ item.tokens }} ток. + тема</span>
             {% elif item.tokens %}
               +{{ item.tokens }} токенов
             {% else %}
@@ -74,6 +77,6 @@
         </li>
       {% endfor %}
     </ul>
-    <p class="mt-6 text-xs entropy-text-subtle">После {{ streak_max_days }}-го дня цикл начинается заново. Пропуск дня сбрасывает стрик на 1.</p>
+    <p class="mt-6 text-xs entropy-text-subtle">После {{ streak_max_days }}-го дня цикл начинается заново. Пропуск дня сбрасывает Заряд на 1.</p>
   </section>
 {% endblock %}

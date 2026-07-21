@@ -26,9 +26,12 @@ from accounts.quests import (
     check_post_comment_quests,
     check_post_like_quests,
     get_user_quests_context,
+    on_comment_made,
     on_golden_comment_approved,
     on_golden_post_liked,
+    on_post_in_node,
     on_post_life_extended,
+    on_serial_like,
 )
 
 from .forms import CommentForm, NodeForm, PostForm
@@ -400,6 +403,7 @@ def _post_detail_view(request, slug, node=None):
                         )
                     # Упоминания в ответе
                     notify_mentions(text, request.user, post.get_absolute_url(), is_comment=True)
+                    on_comment_made(request.user, post.pk)
                     return redirect("forum:post_detail", slug=post.slug)
             else:
                 comment_form = CommentForm(request.POST, request.FILES)
@@ -430,6 +434,7 @@ def _post_detail_view(request, slug, node=None):
                             on_post_life_extended(
                                 request.user, post.pk, remaining_h
                             )
+                    on_comment_made(request.user, post.pk)
                     check_post_comment_quests(post)
                     return redirect("forum:post_detail", slug=post.slug)
         else:
@@ -481,7 +486,7 @@ def post_create(request, node_slug=None):
             post = None
             with transaction.atomic():
                 locked = User.objects.select_for_update().get(pk=request.user.pk)
-                use_free = locked.has_free_post
+                use_free = locked.free_posts > 0
                 cost = 0 if use_free else POST_CREATION_COST
 
                 if locked.tokens < cost:
@@ -495,7 +500,7 @@ def post_create(request, node_slug=None):
                         + timedelta(days=7),
                     }
                     if use_free:
-                        updates["has_free_post"] = False
+                        updates["free_posts"] = F("free_posts") - 1
                     elif cost:
                         updates["tokens"] = F("tokens") - cost
 
@@ -509,8 +514,10 @@ def post_create(request, node_slug=None):
                     if use_free:
                         messages.success(
                             request,
-                            "Использован бесплатный пост (награда 7-го дня стрика).",
+                            "Использован бесплатный пост (награда «Заряда»).",
                         )
+                    if node:
+                        on_post_in_node(request.user, node.slug)
 
             if not post:
                 return redirect(request.META.get("HTTP_REFERER") or "forum:post_list")
@@ -558,7 +565,7 @@ def post_create(request, node_slug=None):
         {
             "form": form,
             "node": node,
-            "has_free_post": request.user.has_free_post,
+            "free_posts": request.user.free_posts,
             "post_cost": POST_CREATION_COST,
         },
     )
@@ -653,6 +660,7 @@ def toggle_like_post(request, slug):
             like.granted_time_extension = True
             update_fields.append("granted_time_extension")
         like.save(update_fields=update_fields)
+        on_serial_like(request.user, post.pk)
         check_post_like_quests(post)
 
     if wants_json(request):
@@ -924,13 +932,13 @@ def node_detail(request, node_slug):
             if media_file or media_url:
                 with transaction.atomic():
                     locked = User.objects.select_for_update().get(pk=request.user.pk)
-                    cost = POST_CREATION_COST if not locked.has_free_post else 0
+                    cost = POST_CREATION_COST if locked.free_posts <= 0 else 0
                     if locked.tokens < cost:
                         messages.error(request, f"Недостаточно токенов.")
                     else:
                         updates = {"vitality_expires_at": F("vitality_expires_at") + timedelta(days=7)}
-                        if locked.has_free_post:
-                            updates["has_free_post"] = False
+                        if locked.free_posts > 0:
+                            updates["free_posts"] = F("free_posts") - 1
                         elif cost:
                             updates["tokens"] = F("tokens") - cost
                         User.objects.filter(pk=locked.pk).update(**updates)
@@ -958,6 +966,7 @@ def node_detail(request, node_slug):
                                 post.audio = final_url
                             post.save(update_fields=["image", "audio", "gif"])
 
+                        on_post_in_node(request.user, node.slug)
                         notify_mentions(title, request.user, post.get_absolute_url())
                         messages.success(request, "Пост опубликован!")
                         return redirect(post.get_absolute_url())

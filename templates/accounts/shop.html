@@ -15,11 +15,12 @@
     {% endfor %}
   {% endif %}
 
-  {% if not shop_items %}
+  {% if not shop_items_with_discount %}
     <p class="entropy-panel px-6 py-12 text-center entropy-text-faint">Сейчас в каталоге нет активных товаров.</p>
   {% else %}
     <div class="space-y-4">
-      {% for item in shop_items %}
+      {% for entry in shop_items_with_discount %}
+        {% with item=entry.item %}
         {% with item_code=item.code %}
         {% with theme_color=item_code|cut:"profile-color-" %}
         <article class="entropy-panel p-6 shop-item">
@@ -29,7 +30,14 @@
               <p class="mt-2 text-sm entropy-text-muted">{{ item.description }}</p>
 
               {% if item.item_type == 'extend_vitality' %}
-                <p class="mt-3 text-xs font-bold uppercase tracking-wide entropy-text-faint">Цена: {{ item.price_tokens }} токенов</p>
+                {% if entry.has_discount %}
+                  <p class="mt-3 text-xs font-bold uppercase tracking-wide">
+                    <span class="entropy-text-faint line-through">{{ entry.original_price }} токенов</span>
+                    <span class="text-yellow-600 ml-2">{{ entry.price }} токенов</span>
+                  </p>
+                {% else %}
+                  <p class="mt-3 text-xs font-bold uppercase tracking-wide entropy-text-faint">Цена: {{ entry.price }} токенов</p>
+                {% endif %}
               {% elif theme_color in owned_colors %}
                 <p class="mt-2 text-xs font-bold uppercase tracking-wide entropy-text-emphasis flex items-center gap-1">
                   <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,7 +46,14 @@
                   Куплено
                 </p>
               {% else %}
-                <p class="mt-3 text-xs font-bold uppercase tracking-wide entropy-text-faint">Цена: {{ item.price_tokens }} токенов</p>
+                {% if entry.has_discount %}
+                  <p class="mt-3 text-xs font-bold uppercase tracking-wide">
+                    <span class="entropy-text-faint line-through">{{ entry.original_price }} токенов</span>
+                    <span class="text-yellow-600 ml-2">{{ entry.price }} токенов</span>
+                  </p>
+                {% else %}
+                  <p class="mt-3 text-xs font-bold uppercase tracking-wide entropy-text-faint">Цена: {{ entry.price }} токенов</p>
+                {% endif %}
               {% endif %}
             </div>
 
@@ -63,6 +78,7 @@
         </article>
         {% endwith %}
         {% endwith %}
+        {% endwith %}
       {% endfor %}
     </div>
   {% endif %}
@@ -72,13 +88,17 @@
       <div>
         <p class="text-sm font-bold" style="color: var(--profile-fg, inherit);">
           Текущая тема:
-          {% if current_color == 'red' %}<span style="color:#e74c4c">Красный</span>
-          {% elif current_color == 'blue' %}<span style="color:#4a8cff">Синий</span>
+          {% if current_color == 'red' %}<span style="color:#e74c4c">Алый закат</span>
+          {% elif current_color == 'blue' %}<span style="color:#4a8cff">Бездонная синева</span>
           {% elif current_color == 'green' %}<span style="color:#4caf78">Зелёный</span>
           {% elif current_color == 'gold' %}<span style="color:#e6c04a">Золотой</span>
           {% elif current_color == 'ice' %}<span style="color:#38bdf8">Ледяное сияние</span>
           {% elif current_color == 'matrix' %}<span style="color:#4ade80">Матрица</span>
           {% elif current_color == 'sunset' %}<span style="color:#f97316">Закат энтропии</span>
+          {% elif current_color == 'purple' %}<span style="color:#a855f7">Сиреневый туман</span>
+          {% elif current_color == 'pink' %}<span style="color:#ec4899">Неоновая роза</span>
+          {% elif current_color == 'gray' %}<span style="color:#9ca3af">Пепел эпохи</span>
+          {% elif current_color == 'metal' %}<span style="color:#d1d5db">Жидкий металл</span>
           {% else %}Стандартная{% endif %}
         </p>
         <p class="mt-1 text-xs entropy-text-faint">Тема видна всем пользователям на вашем профиле.</p>

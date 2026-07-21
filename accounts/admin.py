@@ -38,7 +38,7 @@ class UserAdmin(BaseUserAdmin):
                     "vitality_expires_at",
                     "login_streak",
                     "last_streak_claim",
-                    "has_free_post",
+                    "free_posts",
                     "profile_color",
                 )
             },
@@ -50,10 +50,10 @@ class UserAdmin(BaseUserAdmin):
         "tokens",
         "login_streak",
         "vitality_expires_at",
-        "has_free_post",
+        "free_posts",
         "is_staff",
     )
-    list_filter = ("is_staff", "is_superuser", "is_active", "has_free_post")
+    list_filter = ("is_staff", "is_superuser", "is_active", "free_posts")
 
 
 @admin.register(Quest)

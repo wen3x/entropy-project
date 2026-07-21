@@ -15,8 +15,12 @@ def default_vitality_expires():
 class User(AbstractUser):
     class ProfileColor(models.TextChoices):
         DEFAULT = "", "По умолчанию"
-        RED = "red", "Красный"
-        BLUE = "blue", "Синий"
+        RED = "red", "Алый закат"
+        PURPLE = "purple", "Сиреневый туман"
+        PINK = "pink", "Неоновая роза"
+        GRAY = "gray", "Пепел эпохи"
+        METAL = "metal", "Жидкий металл"
+        BLUE = "blue", "Бездонная синева"
         GREEN = "green", "Зелёный"
         GOLD = "gold", "Золотой"
         ICE = "ice", "Ледяное сияние"
@@ -27,7 +31,7 @@ class User(AbstractUser):
     vitality_expires_at = models.DateTimeField(default=default_vitality_expires)
     login_streak = models.PositiveSmallIntegerField(default=0)
     last_streak_claim = models.DateField(null=True, blank=True)
-    has_free_post = models.BooleanField(default=False)
+    free_posts = models.PositiveSmallIntegerField(default=0, help_text="Накопленные бесплатные посты")
     profile_color = models.CharField(
         max_length=16,
         choices=ProfileColor.choices,
@@ -186,6 +190,7 @@ class ShopItem(models.Model):
     item_type = models.CharField(max_length=32, choices=ItemType.choices)
     visible_in_shop = models.BooleanField(default=False, db_index=True)
     sort_order = models.PositiveSmallIntegerField(default=0)
+    discount_pct = models.PositiveSmallIntegerField(default=0, help_text="Скидка в процентах (0-100). Устанавливается администратором.")
 
     class Meta:
         ordering = ("sort_order", "id")

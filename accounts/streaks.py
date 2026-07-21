@@ -1,3 +1,4 @@
+import random
 from datetime import timedelta
 
 from django.db import transaction
@@ -5,66 +6,67 @@ from django.db.models import F
 from django.utils import timezone
 
 from .models import User
+from .quests import award_random_theme_for_user
 
-STREAK_MAX_DAYS = 14
+STREAK_MAX_DAYS = 28
 
-STREAK_REWARDS = {
-    1: 0,
-    2: 10,
-    3: 15,
-    4: 10,
-    5: 10,
-    6: 10,
-    7: 0,
-    8: 50,
-    9: 20,
-    10: 25,
-    11: 20,
-    12: 25,
-    13: 0,
-    14: 0,
+# Диапазоны наград по неделям (хаотичные, random в диапазоне)
+WEEKLY_RANGES = {
+    1: (10, 20),   # неделя 1: дни 2-6
+    2: (15, 25),   # неделя 2: дни 8-13
+    3: (15, 30),   # неделя 3: дни 15-20
+    4: (25, 30),   # неделя 4: дни 22-28
 }
 
-STREAK_FREE_POST_DAYS = frozenset({7, 13, 14})
+# Дни, когда даётся бесплатный пост (7, 14, 21 — каждый 7-й, кроме 28)
+STREAK_FREE_POST_DAYS = frozenset({7, 14, 21})
 
-STREAK_SCHEDULE = [
-    {"day": 1, "label": "День 1", "description": "Первый вход - стрик начат", "tokens": 0},
-    {"day": 2, "label": "День 2", "description": "Ежедневная награда", "tokens": 10},
-    {"day": 3, "label": "День 3", "description": "Ежедневная награда", "tokens": 15},
-    {"day": 4, "label": "День 4", "description": "Ежедневная награда", "tokens": 10},
-    {"day": 5, "label": "День 5", "description": "Ежедневная награда", "tokens": 10},
-    {"day": 6, "label": "День 6", "description": "Ежедневная награда", "tokens": 10},
-    {
-        "day": 7,
-        "label": "День 7",
-        "description": "Один бесплатный пост (0 токенов)",
-        "tokens": 0,
-        "free_post": True,
-    },
-    {"day": 8, "label": "День 8", "description": "Ежедневная награда", "tokens": 50},
-    {"day": 9, "label": "День 9", "description": "Ежедневная награда", "tokens": 20},
-    {"day": 10, "label": "День 10", "description": "Ежедневная награда", "tokens": 25},
-    {"day": 11, "label": "День 11", "description": "Ежедневная награда", "tokens": 20},
-    {"day": 12, "label": "День 12", "description": "Ежедневная награда", "tokens": 25},
-    {
-        "day": 13,
-        "label": "День 13",
-        "description": "Один бесплатный пост (0 токенов)",
-        "tokens": 0,
-        "free_post": True,
-    },
-    {
-        "day": 14,
-        "label": "День 14",
-        "description": "Один бесплатный пост (0 токенов)",
-        "tokens": 0,
-        "free_post": True,
-    },
-]
+
+def _get_week(day: int) -> int:
+    return (day - 1) // 7 + 1
+
+
+def _get_tokens_for_day(day: int) -> int:
+    week = _get_week(day)
+    lo, hi = WEEKLY_RANGES.get(week, (10, 20))
+    return random.randint(lo, hi)
+
+
+def _range_str(day: int) -> str:
+    week = _get_week(day)
+    lo, hi = WEEKLY_RANGES.get(week, (10, 20))
+    if lo == hi:
+        return str(lo)
+    return f"{lo}–{hi}"
+
+
+def _generate_schedule() -> list[dict]:
+    """Сгенерировать расписание для отображения (показывает диапазоны)."""
+    schedule = []
+    for day in range(1, STREAK_MAX_DAYS + 1):
+        entry = {"day": day, "label": f"День {day}"}
+        if day == 1:
+            entry["description"] = "Первый вход — Заряд начат"
+            entry["tokens"] = 0
+        elif day in STREAK_FREE_POST_DAYS:
+            entry["description"] = "Бесплатный пост"
+            entry["free_post"] = True
+            entry["tokens"] = 0
+        elif day == 28:
+            entry["description"] = f"{_range_str(day)} токенов + новая тема профиля"
+            entry["tokens"] = _range_str(day)
+            entry["theme"] = "🎨"
+        else:
+            entry["description"] = f"Ежедневная награда ({_range_str(day)} токенов)"
+            entry["tokens"] = _range_str(day)
+        schedule.append(entry)
+    return schedule
+
+
+STREAK_SCHEDULE = _generate_schedule()
 
 
 def process_daily_login(user: User) -> dict | None:
-    """Начисляет награду за день, если ещё не забирали сегодня."""
     today = timezone.localdate()
 
     with transaction.atomic():
@@ -83,24 +85,40 @@ def process_daily_login(user: User) -> dict | None:
         if new_streak > STREAK_MAX_DAYS:
             new_streak = 1
 
-        tokens_reward = STREAK_REWARDS.get(new_streak, 0)
+        tokens_reward = 0
+        free_posts_awarded = 0
+        theme_awarded = None
+
         updates = {
             "login_streak": new_streak,
             "last_streak_claim": today,
         }
-        if tokens_reward:
-            updates["tokens"] = F("tokens") + tokens_reward
+
         if new_streak in STREAK_FREE_POST_DAYS:
-            updates["has_free_post"] = True
+            updates["free_posts"] = F("free_posts") + 1
+            free_posts_awarded = 1
+        elif new_streak >= 2:
+            tokens_reward = _get_tokens_for_day(new_streak)
+            updates["tokens"] = F("tokens") + tokens_reward
+
+        # 28 день — особая награда (токены + тема)
+        if new_streak == 28:
+            theme_key = award_random_theme_for_user(locked.pk)
+            if theme_key:
+                from .shop import COLOR_NAMES
+                theme_awarded = COLOR_NAMES.get(theme_key, theme_key)
 
         User.objects.filter(pk=locked.pk).update(**updates)
         locked.refresh_from_db()
 
-    return {
+    result = {
         "streak_day": new_streak,
         "tokens_reward": tokens_reward,
-        "has_free_post": new_streak in STREAK_FREE_POST_DAYS,
+        "free_posts_awarded": free_posts_awarded,
     }
+    if theme_awarded:
+        result["theme_awarded"] = theme_awarded
+    return result
 
 
 def get_streak_page_context(user: User) -> dict:
@@ -109,15 +127,11 @@ def get_streak_page_context(user: User) -> dict:
         min(100, int((current / STREAK_MAX_DAYS) * 100)) if current else 0
     )
 
-    # ── Календарь: последние 60 дней ──
     today = timezone.localdate()
     calendar_days = []
     last_claim = user.last_streak_claim
 
-    # Вычисляем предполагаемый первый день стрика
-    # Если стрик активен, то streak дней подряд до last_claim
     if last_claim and current > 0:
-        # Проверяем, не сломан ли стрик (last_claim + 1 день = today)
         streak_broken = (last_claim < today - timedelta(days=1))
     else:
         streak_broken = True
@@ -128,13 +142,11 @@ def get_streak_page_context(user: User) -> dict:
         tooltip = ""
 
         if last_claim and current > 0 and not streak_broken:
-            # Стрик активен — закрашиваем последние `current` дней
             days_from_last_claim = (last_claim - day).days
             if 0 <= days_from_last_claim < current:
                 is_active = True
-                tooltip = f"День стрика {current - days_from_last_claim}"
+                tooltip = f"День Заряда {current - days_from_last_claim}"
 
-        # Отмечаем день когда был заклеймлен
         if last_claim and day == last_claim:
             tooltip = f"Последний вход • {day:%d.%m}"
             if current > 0:
@@ -153,6 +165,6 @@ def get_streak_page_context(user: User) -> dict:
         "current_streak": current,
         "progress_pct": progress_pct,
         "streak_max_days": STREAK_MAX_DAYS,
-        "has_free_post": user.has_free_post,
+        "free_posts": user.free_posts,
         "calendar_days": calendar_days,
     }

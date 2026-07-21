@@ -25,15 +25,15 @@
             <path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/>
           </svg>
           <div>
-            <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">Стрик</p>
+            <p class="text-xs font-bold uppercase tracking-widest entropy-text-faint">Заряд</p>
             <p class="text-2xl font-extrabold tabular-nums">{{ profile_user.login_streak }} <span class="text-sm font-medium entropy-text-faint">дн.</span></p>
           </div>
         </div>
         {% endif %}
       </div>
 
-      {% if is_own_profile and profile_user.has_free_post %}
-        <p class="mt-4 border entropy-border px-4 py-2 text-sm font-medium">Доступен один бесплатный пост (награда стрика или квеста).</p>
+      {% if is_own_profile and profile_user.free_posts %}
+        <p class="mt-4 border entropy-border px-4 py-2 text-sm font-medium">Бесплатных постов: {{ profile_user.free_posts }} (награда «Заряда» или квестов).</p>
       {% endif %}
 
       {% if is_own_profile and streak_reward %}
@@ -83,7 +83,7 @@
 
       {% if is_own_profile %}
       <div class="mt-6 flex flex-wrap gap-3">
-        <a href="{% url 'streaks' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold text-center flex-1 sm:flex-none">Система стриков</a>
+        <a href="{% url 'streaks' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold text-center flex-1 sm:flex-none">Заряд</a>
         <a href="{% url 'shop' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold text-center flex-1 sm:flex-none">Магазин</a>
         <a href="{% url 'inventory' %}" class="entropy-btn inline-block px-4 py-2 text-sm font-semibold text-center flex-1 sm:flex-none">Инвентарь</a>
       </div>
@@ -109,10 +109,17 @@
           <p class="mt-1 text-sm font-medium" style="color: {{ profile_theme.fg_faint }}">{% if is_own_profile %}Ваш аккаунт{% else %}Публичная статистика{% endif %}</p>
           {% if profile_theme_id != 'default' %}
             <p class="profile-theme-label mt-3 text-xs uppercase" style="color: {{ profile_theme.fg_muted }}">
-              {% if profile_theme_id == 'red' %}● Красная тема
-              {% elif profile_theme_id == 'blue' %}● Синяя тема
+              {% if profile_theme_id == 'red' %}● Алый закат
+              {% elif profile_theme_id == 'blue' %}● Бездонная синева
+              {% elif profile_theme_id == 'purple' %}● Сиреневый туман
+              {% elif profile_theme_id == 'pink' %}● Неоновая роза
+              {% elif profile_theme_id == 'gray' %}● Пепел эпохи
+              {% elif profile_theme_id == 'metal' %}● Жидкий металл
               {% elif profile_theme_id == 'green' %}● Зелёная тема
               {% elif profile_theme_id == 'gold' %}● Золотая тема
+              {% elif profile_theme_id == 'ice' %}● Ледяное сияние
+              {% elif profile_theme_id == 'matrix' %}● Матрица
+              {% elif profile_theme_id == 'sunset' %}● Закат энтропии
               {% endif %}
             </p>
           {% endif %}
@@ -123,15 +130,15 @@
             <path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/>
           </svg>
           <div>
-            <p class="text-xs font-bold uppercase tracking-widest" style="color: {{ profile_theme.fg_faint }}">Стрик</p>
+            <p class="text-xs font-bold uppercase tracking-widest" style="color: {{ profile_theme.fg_faint }}">Заряд</p>
             <p class="text-2xl font-extrabold tabular-nums" style="color: {{ profile_theme.fg }}">{{ profile_user.login_streak }} <span class="text-sm font-medium" style="color: {{ profile_theme.fg_faint }}">дн.</span></p>
           </div>
         </div>
         {% endif %}
       </div>
 
-      {% if is_own_profile and profile_user.has_free_post %}
-        <p class="mt-4 profile-stat border px-4 py-2 text-sm font-medium" style="border-color: {{ profile_theme.fg }}">Доступен один бесплатный пост (награда стрика или квеста).</p>
+      {% if is_own_profile and profile_user.free_posts %}
+        <p class="mt-4 profile-stat border px-4 py-2 text-sm font-medium" style="border-color: {{ profile_theme.fg }}">Бесплатных постов: {{ profile_user.free_posts }} (награда «Заряда» или квестов).</p>
       {% endif %}
 
       {% if is_own_profile and streak_reward %}
@@ -181,7 +188,7 @@
 
       {% if is_own_profile %}
       <div class="mt-6 flex flex-wrap gap-3">
-        <a href="{% url 'streaks' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Система стриков</a>
+        <a href="{% url 'streaks' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Заряд</a>
         <a href="{% url 'shop' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Магазин</a>
         <a href="{% url 'inventory' %}" class="profile-btn inline-block px-4 py-2 text-sm" style="border-color: {{ profile_theme.fg }}; color: {{ profile_theme.fg }}">Инвентарь</a>
       </div>

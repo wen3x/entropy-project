@@ -12,7 +12,6 @@ PALETTES = {
         "fg_faint": "rgba(231, 76, 76, 0.55)",
         "fg_subtle": "rgba(231, 76, 76, 0.45)",
         "on_accent": "#ffffff",
-        "glow": "0 0 10px rgba(231, 76, 76, 0.55), 0 0 18px rgba(231, 76, 76, 0.35)",
     },
     "blue": {
         "fg": "#4a8cff",
@@ -20,7 +19,6 @@ PALETTES = {
         "fg_faint": "rgba(74, 140, 255, 0.55)",
         "fg_subtle": "rgba(74, 140, 255, 0.45)",
         "on_accent": "#ffffff",
-        "glow": "0 0 10px rgba(74, 140, 255, 0.55), 0 0 18px rgba(74, 140, 255, 0.35)",
     },
     "green": {
         "fg": "#4caf78",
@@ -28,7 +26,6 @@ PALETTES = {
         "fg_faint": "rgba(76, 175, 120, 0.55)",
         "fg_subtle": "rgba(76, 175, 120, 0.45)",
         "on_accent": "#ffffff",
-        "glow": "0 0 10px rgba(76, 175, 120, 0.55), 0 0 18px rgba(76, 175, 120, 0.35)",
     },
     "gold": {
         "fg": "#e6c04a",
@@ -44,7 +41,6 @@ PALETTES = {
         "fg_faint": "rgba(56, 189, 248, 0.55)",
         "fg_subtle": "rgba(56, 189, 248, 0.45)",
         "on_accent": "#000000",
-        "glow": "0 0 10px rgba(56, 189, 248, 0.55), 0 0 18px rgba(56, 189, 248, 0.35)",
     },
     "matrix": {
         "fg": "#4ade80",
@@ -52,7 +48,6 @@ PALETTES = {
         "fg_faint": "rgba(74, 222, 128, 0.55)",
         "fg_subtle": "rgba(74, 222, 128, 0.45)",
         "on_accent": "#000000",
-        "glow": "0 0 10px rgba(74, 222, 128, 0.55), 0 0 18px rgba(74, 222, 128, 0.35)",
     },
     "sunset": {
         "fg": "#f97316",
@@ -60,7 +55,34 @@ PALETTES = {
         "fg_faint": "rgba(249, 115, 22, 0.55)",
         "fg_subtle": "rgba(249, 115, 22, 0.45)",
         "on_accent": "#000000",
-        "glow": "0 0 10px rgba(249, 115, 22, 0.55), 0 0 18px rgba(249, 115, 22, 0.35)",
+    },
+    "purple": {
+        "fg": "#a855f7",
+        "fg_muted": "rgba(168, 85, 247, 0.7)",
+        "fg_faint": "rgba(168, 85, 247, 0.55)",
+        "fg_subtle": "rgba(168, 85, 247, 0.45)",
+        "on_accent": "#ffffff",
+    },
+    "pink": {
+        "fg": "#ec4899",
+        "fg_muted": "rgba(236, 72, 153, 0.7)",
+        "fg_faint": "rgba(236, 72, 153, 0.55)",
+        "fg_subtle": "rgba(236, 72, 153, 0.45)",
+        "on_accent": "#ffffff",
+    },
+    "gray": {
+        "fg": "#9ca3af",
+        "fg_muted": "rgba(156, 163, 175, 0.7)",
+        "fg_faint": "rgba(156, 163, 175, 0.55)",
+        "fg_subtle": "rgba(156, 163, 175, 0.45)",
+        "on_accent": "#000000",
+    },
+    "metal": {
+        "fg": "#d1d5db",
+        "fg_muted": "rgba(209, 213, 219, 0.7)",
+        "fg_faint": "rgba(209, 213, 219, 0.55)",
+        "fg_subtle": "rgba(209, 213, 219, 0.45)",
+        "on_accent": "#000000",
     },
 }
 

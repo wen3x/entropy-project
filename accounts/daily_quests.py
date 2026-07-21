@@ -84,7 +84,7 @@ def get_or_create_cycle(user: User) -> UserDailyQuestCycle:
 
 def _grant_quest_reward(cycle: UserDailyQuestCycle, quest_def: dict) -> None:
     if quest_def.get("free_post"):
-        User.objects.filter(pk=cycle.user_id).update(has_free_post=True)
+        User.objects.filter(pk=cycle.user_id).update(free_posts=F("free_posts") + 1)
         notify_quest_complete(cycle.user, quest_def["title"], free_post=True)
         return
     tokens = quest_def.get("reward_tokens", 0)

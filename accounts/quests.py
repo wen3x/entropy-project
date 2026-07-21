@@ -7,9 +7,49 @@ from django.db.models import Count, F
 from django.utils import timezone
 
 from forum.models import Comment, Like, Post
+from .theme import PALETTES
 
 from .models import Quest, User, UserQuestSlot
 from .notifications import notify_quest_complete
+
+
+# Все цвета профиля (кроме default и gold)
+THEME_POOL = [k for k in PALETTES if k not in ("default", "gold")]
+
+
+def _award_random_theme(user: User) -> str | None:
+    """Дать случайную тему (кроме золотой). Возвращает ключ темы или None."""
+    if not THEME_POOL:
+        return None
+    theme_key = random.choice(THEME_POOL)
+    owned = list(user.owned_colors or [])
+    if theme_key not in owned:
+        owned.append(theme_key)
+    User.objects.filter(pk=user.pk).update(
+        owned_colors=owned,
+        profile_color=theme_key,
+    )
+    return theme_key
+
+
+def award_random_theme_for_user(user_id: int) -> str | None:
+    """Публичная утилита: выдать случайную тему пользователю по pk.
+    Используется из streaks.py для 28-го дня.
+    Возвращает ключ темы (например 'ice', 'metal') или None."""
+    if not THEME_POOL:
+        return None
+    theme_key = random.choice(THEME_POOL)
+    user = User.objects.filter(pk=user_id).first()
+    if not user:
+        return None
+    owned = list(user.owned_colors or [])
+    if theme_key not in owned:
+        owned.append(theme_key)
+    User.objects.filter(pk=user_id).update(
+        owned_colors=owned,
+        profile_color=theme_key,
+    )
+    return theme_key
 
 QUEST_REFRESH_DAYS = 3
 ACTIVE_SLOT_COUNT = 3
@@ -56,6 +96,42 @@ QUEST_REGISTRY = {
         "target": 5,
         "reward_tokens": 150,
         "reward_label": "+150 токенов",
+    },
+    "serial_liker": {
+        "title": "Серийный лайкер",
+        "description": "Поставьте лайк на 10 разных постов.",
+        "target": 10,
+        "reward_tokens": 30,
+        "reward_label": "+30 токенов",
+    },
+    "veteran": {
+        "title": "Ветеран",
+        "description": "Оставьте 5 комментариев под разными постами.",
+        "target": 5,
+        "reward_tokens": 25,
+        "reward_label": "+25 токенов",
+    },
+    "shopaholic": {
+        "title": "Шопоголик",
+        "description": "Купите любой товар в магазине.",
+        "target": 1,
+        "reward_tokens": 50,
+        "reward_label": "+50 токенов",
+    },
+    "survivor": {
+        "title": "Живучий",
+        "description": "Продлите жизнь аккаунта. Есть шанс получить редкую тему!",
+        "target": 1,
+        "reward_tokens": 0,
+        "reward_label": "🎨 Случайная тема (5%)",
+        "key": "survivor",
+    },
+    "traveler": {
+        "title": "Путешественник",
+        "description": "Напишите посты в 3 разных узлах.",
+        "target": 3,
+        "reward_tokens": 40,
+        "reward_label": "+40 токенов",
     },
 }
 
@@ -133,9 +209,29 @@ def refresh_user_quest_slots(user: User) -> None:
 
 def _grant_slot_reward(user: User, quest_def: dict) -> None:
     if quest_def.get("free_post"):
-        User.objects.filter(pk=user.pk).update(has_free_post=True)
+        User.objects.filter(pk=user.pk).update(free_posts=F("free_posts") + 1)
         notify_quest_complete(user, quest_def["title"], free_post=True)
         return
+    
+    # Квест «Живучий» — 5% шанс на случайную тему
+    if quest_def["key"] == "survivor":
+        should_award_theme = random.randint(1, 100) <= 5
+        if should_award_theme:
+            theme_key = _award_random_theme(user)
+            if theme_key:
+                from accounts.shop import COLOR_NAMES
+                theme_name = COLOR_NAMES.get(theme_key, theme_key)
+                User.objects.filter(pk=user.pk).update(tokens=F("tokens") + 30)
+                from .notifications import notify
+                from .models import Notification
+                notify(user, Notification.Kind.QUEST_COMPLETE,
+                       f"Квест «{quest_def['title']}» выполнен! Вам выпала тема «{theme_name}»!")
+                return
+        # Если не повезло — даём 30 токенов
+        User.objects.filter(pk=user.pk).update(tokens=F("tokens") + 30)
+        notify_quest_complete(user, quest_def["title"], 30)
+        return
+    
     tokens = quest_def.get("reward_tokens", 0)
     if tokens:
         User.objects.filter(pk=user.pk).update(tokens=F("tokens") + tokens)
@@ -267,6 +363,77 @@ def on_golden_comment_approved(comment_author: User) -> None:
         slot = _active_slot(comment_author, "golden_approval")
         if slot:
             _set_slot_progress(slot, 1)
+
+
+def on_serial_like(user: User, post_id: int) -> None:
+    """Квест «Серийный лайкер»: лайкнуть 10 разных постов."""
+    if not user.is_authenticated:
+        return
+    with transaction.atomic():
+        slot = _active_slot(user, "serial_liker")
+        if not slot:
+            return
+        ids = list(slot.extra_data.get("liked_post_ids", []))
+        if post_id in ids:
+            return
+        ids.append(post_id)
+        slot.extra_data["liked_post_ids"] = ids
+        slot.save(update_fields=["extra_data"])
+        _set_slot_progress(slot, len(ids))
+
+
+def on_comment_made(user: User, post_id: int) -> None:
+    """Квест «Ветеран»: 5 комментариев под разными постами."""
+    if not user.is_authenticated:
+        return
+    with transaction.atomic():
+        slot = _active_slot(user, "veteran")
+        if not slot:
+            return
+        ids = list(slot.extra_data.get("commented_post_ids", []))
+        if post_id in ids:
+            return
+        ids.append(post_id)
+        slot.extra_data["commented_post_ids"] = ids
+        slot.save(update_fields=["extra_data"])
+        _set_slot_progress(slot, len(ids))
+
+
+def on_shop_purchase(user: User) -> None:
+    """Квест «Шопоголик»: купить любой товар в магазине."""
+    if not user.is_authenticated:
+        return
+    with transaction.atomic():
+        slot = _active_slot(user, "shopaholic")
+        if slot:
+            _set_slot_progress(slot, 1)
+
+
+def on_vitality_extend(user: User) -> None:
+    """Квест «Живучий»: продлить жизнь аккаунта через магазин."""
+    if not user.is_authenticated:
+        return
+    with transaction.atomic():
+        slot = _active_slot(user, "survivor")
+        if slot:
+            _set_slot_progress(slot, 1)
+
+
+def on_post_in_node(user: User, node_slug: str) -> None:
+    """Квест «Путешественник»: написать пост в 3 разных узлах."""
+    if not user.is_authenticated:
+        return
+    with transaction.atomic():
+        slot = _active_slot(user, "traveler")
+        if not slot:
+            return
+        slugs = list(slot.extra_data.get("node_slugs", []))
+        if node_slug in slugs:
+            return
+        slugs.append(node_slug)
+        slot.extra_data["node_slugs"] = slugs
+        slot.save(update_fields=["extra_data"])
+        _set_slot_progress(slot, len(slugs))
 
 
 def on_post_life_extended(user: User, post_id: int, hours_remaining_before: float) -> None:
