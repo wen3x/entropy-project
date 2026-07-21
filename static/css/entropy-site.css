@@ -204,9 +204,9 @@ a.entropy-link:hover,
 }
 
 .entropy-footer {
-  background: var(--entropy-surface);
   border-top: var(--entropy-border-width) solid var(--entropy-border);
   color: var(--entropy-fg-faint);
+  background: #ffffff;
 }
 
 #sidebar-overlay {
@@ -1650,3 +1650,7 @@ html[data-site-theme="dark"] .node-header img {
 /* ── Tablet (768–1023px): keep current layout ── */
 
 /* ── Mobile (≤767px): everything stays as is ── */
+
+html[data-site-theme="dark"] .entropy-footer {
+  background-color: #000000 !important;
+}
