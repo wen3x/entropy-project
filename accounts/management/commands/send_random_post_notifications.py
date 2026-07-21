@@ -1,5 +1,6 @@
 import random
 from datetime import timedelta
+from collections import defaultdict
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -10,75 +11,94 @@ from forum.models import Post
 
 
 class Command(BaseCommand):
-    help = "Рекомендует посты из отслеживаемых узлов (раз в 8–24ч)."
+    help = "Рекомендует пост из одного случайного узла раз в 8–24ч на пользователя."
 
     def handle(self, *args, **options):
         now = timezone.now()
         sent = 0
 
+        # Группируем подписки по пользователю, выбираем те, что пора уведомлять
+        user_subs = defaultdict(list)
         for sub in NodeSubscription.objects.select_related("user", "node").iterator():
-            # Если никогда не уведомляли — пора
             if sub.last_notified_at is None:
                 due = True
             else:
-                # Интервал 8–24 часа (рандомно для каждой подписки)
                 interval = timedelta(hours=random.uniform(8, 24))
                 due = sub.last_notified_at + interval <= now
 
             if not due:
                 continue
+            user_subs[sub.user_id].append(sub)
 
-            # Активные посты в узле
+        for user_id, subs in user_subs.items():
+            # Выбираем один случайный узел из тех, что пора уведомлять
+            random.shuffle(subs)
+            chosen_sub = None
+
+            for sub in subs:
+                has_active = Post.objects.filter(
+                    node=sub.node,
+                    is_active=True,
+                    expires_at__gt=now,
+                ).exists()
+                if has_active:
+                    chosen_sub = sub
+                    break
+
+            if not chosen_sub:
+                chosen_sub = subs[0]
+
+            user_obj = chosen_sub.user
+
+            # Активные посты в выбранном узле
             active_posts = Post.objects.filter(
-                node=sub.node,
+                node=chosen_sub.node,
                 is_active=True,
                 expires_at__gt=now,
             )
 
-            if not active_posts.exists():
-                # Если в узле нет активных постов — пропускаем
-                continue
+            if active_posts.exists():
+                # Проверяем, какие посты уже отправляли
+                already_notified = set(
+                    Notification.objects.filter(
+                        user=user_obj,
+                        kind=Notification.Kind.NODE_RANDOM_POST,
+                    ).values_list("link", flat=True)
+                )
+                notified_slugs = set()
+                for link in already_notified:
+                    parts = link.strip("/").split("/")
+                    if parts:
+                        notified_slugs.add(parts[-1])
 
-            # Проверяем, какие посты из узла уже были отправлены пользователю
-            all_post_urls = set(active_posts.values_list("slug", flat=True))
-            already_notified = set(
-                Notification.objects.filter(
-                    user=sub.user,
-                    kind=Notification.Kind.NODE_RANDOM_POST,
-                ).values_list("link", flat=True)
-            )
-            # Извлекаем slug из ссылок вида "/p/slug/"
-            notified_slugs = set()
-            for link in already_notified:
-                parts = link.strip("/").split("/")
-                if parts:
-                    notified_slugs.add(parts[-1])
+                all_slugs = set(active_posts.values_list("slug", flat=True))
+                not_notified = all_slugs - notified_slugs
 
-            not_notified_slugs = all_post_urls - notified_slugs
+                if not_notified:
+                    post = active_posts.filter(slug__in=not_notified).order_by("?").first()
+                else:
+                    post = active_posts.order_by("?").first()
 
-            if not_notified_slugs:
-                # Выбираем случайный пост, о котором ещё не уведомляли
-                post = active_posts.filter(slug__in=not_notified_slugs).order_by("?").first()
                 if post:
                     notify(
-                        user=sub.user,
+                        user=user_obj,
                         kind=Notification.Kind.NODE_RANDOM_POST,
                         message=f"Рекомендуем прочитать: {post.title}",
                         link=post.get_absolute_url(),
                     )
                     sent += 1
             else:
-                # Все посты в узле уже были рекомендованы — пишем об узле
-                node_url = sub.node.get_absolute_url()
+                node_url = chosen_sub.node.get_absolute_url()
                 notify(
-                    user=sub.user,
+                    user=user_obj,
                     kind=Notification.Kind.NODE_INACTIVE,
-                    message=f"В узле «{sub.node.name}» нет новых постов. Создайте свой!",
+                    message=f"В узле «{chosen_sub.node.name}» нет новых постов. Создайте свой!",
                     link=node_url,
                 )
                 sent += 1
 
-            NodeSubscription.objects.filter(pk=sub.pk).update(
+            # Обновляем last_notified_at для ВСЕХ подписок пользователя
+            NodeSubscription.objects.filter(user_id=user_id).update(
                 last_notified_at=now,
             )
 
