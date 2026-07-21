@@ -29,7 +29,8 @@ def _get_week(day: int) -> int:
 def _get_tokens_for_day(day: int) -> int:
     week = _get_week(day)
     lo, hi = WEEKLY_RANGES.get(week, (10, 20))
-    return random.randint(lo, hi)
+    # Токены всегда кратны 5
+    return random.randrange(lo, hi + 1, 5)
 
 
 def _range_str(day: int) -> str:
