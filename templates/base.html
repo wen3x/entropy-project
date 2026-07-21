@@ -53,7 +53,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/entropy-site.css' %}?v=10">
+  <link rel="stylesheet" href="{% static 'css/entropy-site.css' %}?v=11">
   <style>
     /* ── Bottom nav (inline — только для мобильных, не зависит от CSS-файла) ── */
     @media (max-width: 767px) {
@@ -63,11 +63,14 @@
         z-index: 40;
         display: flex;
         align-items: stretch;
-        background: var(--entropy-header-bg, #ffffff);
+        background: #ffffff !important;
         border-top: 2px solid var(--entropy-border, #000000);
         box-shadow: 0 -3px 0 0 var(--entropy-border, #000000);
         padding-bottom: env(safe-area-inset-bottom, 0);
         height: 68px;
+      }
+      html[data-site-theme="dark"] .entropy-bottom-nav {
+        background: #000000 !important;
       }
       .entropy-bottom-nav__item {
         flex: 1;
@@ -101,6 +104,16 @@
         text-overflow: ellipsis;
         max-width: 100%;
       }
+    }
+
+    /* ── Header + Footer: инлайн, ПОСЛЕ Tailwind CDN, чтоб наверняка ── */
+    .entropy-header,
+    .entropy-footer {
+      background: #ffffff !important;
+    }
+    html[data-site-theme="dark"] .entropy-header,
+    html[data-site-theme="dark"] .entropy-footer {
+      background: #000000 !important;
     }
   </style>
 </head>

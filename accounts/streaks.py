@@ -108,10 +108,51 @@ def get_streak_page_context(user: User) -> dict:
     progress_pct = (
         min(100, int((current / STREAK_MAX_DAYS) * 100)) if current else 0
     )
+
+    # ── Календарь: последние 60 дней ──
+    today = timezone.localdate()
+    calendar_days = []
+    last_claim = user.last_streak_claim
+
+    # Вычисляем предполагаемый первый день стрика
+    # Если стрик активен, то streak дней подряд до last_claim
+    if last_claim and current > 0:
+        # Проверяем, не сломан ли стрик (last_claim + 1 день = today)
+        streak_broken = (last_claim < today - timedelta(days=1))
+    else:
+        streak_broken = True
+
+    for offset in range(60):
+        day = today - timedelta(days=59 - offset)
+        is_active = False
+        tooltip = ""
+
+        if last_claim and current > 0 and not streak_broken:
+            # Стрик активен — закрашиваем последние `current` дней
+            days_from_last_claim = (last_claim - day).days
+            if 0 <= days_from_last_claim < current:
+                is_active = True
+                tooltip = f"День стрика {current - days_from_last_claim}"
+
+        # Отмечаем день когда был заклеймлен
+        if last_claim and day == last_claim:
+            tooltip = f"Последний вход • {day:%d.%m}"
+            if current > 0:
+                is_active = True
+
+        calendar_days.append({
+            "day": day,
+            "is_active": is_active,
+            "is_today": day == today,
+            "is_future": day > today,
+            "tooltip": tooltip or day.strftime("%d.%m.%Y"),
+        })
+
     return {
         "schedule": STREAK_SCHEDULE,
         "current_streak": current,
         "progress_pct": progress_pct,
         "streak_max_days": STREAK_MAX_DAYS,
         "has_free_post": user.has_free_post,
+        "calendar_days": calendar_days,
     }

@@ -32,6 +32,10 @@
     var heart = btn.querySelector('.like-heart');
     if (heart) {
       heart.setAttribute('fill', liked ? 'currentColor' : 'none');
+      // Heartbeat animation on like
+      heart.classList.remove('like-heartbeat');
+      void heart.offsetWidth; // reflow
+      heart.classList.add('like-heartbeat');
     }
     btn.setAttribute("data-liked", liked ? "true" : "false");
     btn.setAttribute("aria-pressed", liked ? "true" : "false");

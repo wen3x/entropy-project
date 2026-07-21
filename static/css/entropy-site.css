@@ -102,3 +102,110 @@ html[data-site-theme="light"] .entropy-logo-img { filter: invert(1); }
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Death Effects (Entropy Decay) ── */
+.post-dying-shake {
+  animation: entropy-shake 0.5s ease-in-out infinite;
+}
+
+@keyframes entropy-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px) rotate(-0.3deg); }
+  40% { transform: translateX(2px) rotate(0.3deg); }
+  60% { transform: translateX(-1px) rotate(-0.2deg); }
+  80% { transform: translateX(1px) rotate(0.2deg); }
+}
+
+.post-dying-blur {
+  filter: blur(0.6px);
+  transition: filter 0.5s ease;
+  opacity: 0.75;
+}
+
+.post-dying-blur.post-card {
+  border-color: rgba(200, 0, 0, 0.3) !important;
+}
+
+/* ── Heartbeat animation for likes ── */
+.like-heartbeat {
+  animation: heartbeat 0.45s ease-in-out;
+}
+
+@keyframes heartbeat {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.35); }
+  50% { transform: scale(0.9); }
+  75% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ── Streak Calendar (GitHub-style) ── */
+.streak-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.streak-calendar__day {
+  aspect-ratio: 1;
+  border: 1px solid var(--entropy-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  position: relative;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.streak-calendar__day:hover {
+  transform: scale(1.15);
+  z-index: 2;
+}
+
+.streak-calendar__day--empty {
+  border-color: transparent;
+  border: none;
+  background: transparent;
+}
+
+.streak-calendar__day--active {
+  background: var(--entropy-fg);
+  color: var(--entropy-on-accent);
+  border-color: var(--entropy-fg);
+}
+
+.streak-calendar__day--today {
+  border-width: 2px;
+  border-color: var(--entropy-fg);
+  box-shadow: 0 0 0 1px var(--entropy-fg);
+}
+
+.streak-calendar__day--future {
+  opacity: 0.2;
+}
+
+.streak-calendar__tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: var(--entropy-fg);
+  color: var(--entropy-on-accent);
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 3px 6px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.streak-calendar__day:hover .streak-calendar__tooltip {
+  display: block;
+}
+
+.streak-calendar__day--active.streak-calendar__day--today {
+  border-width: 2px;
+  border-color: var(--entropy-fg);
+}

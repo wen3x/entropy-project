@@ -34,6 +34,25 @@
     </div>
   </section>
 
+  {# ── Календарь стриков (GitHub-style) ── #}
+  <section class="entropy-card mb-8 p-6">
+    <h2 class="text-lg font-extrabold uppercase tracking-tight mb-4">Календарь активности</h2>
+    <p class="text-xs entropy-text-faint mb-4">Последние 60 дней. Закрашены дни непрерывного стрика.</p>
+    <div class="streak-calendar">
+      {% for cd in calendar_days %}
+        <div class="streak-calendar__day
+          {% if cd.is_future %}streak-calendar__day--future{% endif %}
+          {% if cd.is_active and not cd.is_future %}streak-calendar__day--active{% endif %}
+          {% if cd.is_today %}streak-calendar__day--today{% endif %}
+        ">
+          {% if cd.is_active and not cd.is_future %}
+            <span class="streak-calendar__tooltip">{{ cd.tooltip }}</span>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
   <section class="entropy-card p-6">
     <h2 class="text-lg font-extrabold uppercase tracking-tight">Награды по дням</h2>
     <ul class="mt-6 space-y-0 divide-y entropy-divide border-t entropy-border">
